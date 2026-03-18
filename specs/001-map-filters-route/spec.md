@@ -42,7 +42,7 @@ A skier selects a starting point and an ending point from drop-down menus, click
 
 ### User Story 3 - Filter by Difficulty and Lift Type (Priority: P3)
 
-A skier uses filter checkboxes to exclude certain run difficulties (e.g., uncheck "black") or certain lift types (e.g., uncheck "drag lift") before computing a route. The route computation only considers segments matching the active filters. Filters affect both the route calculation and optionally the map display.
+A skier uses filter checkboxes to exclude certain run difficulties (e.g., uncheck "black") or certain lift types (e.g., uncheck "drag lift") before computing a route. The route computation only considers segments matching the active filters. Filtered-out segments are dimmed/greyed on the map (still visible for spatial context but visually de-emphasized).
 
 **Why this priority**: Filtering personalizes the experience for different skill levels (beginners avoid black runs, etc.) but requires routing to work first.
 
@@ -86,19 +86,20 @@ The interface shows three routing mode tabs: "Short" (active and functional), "S
 
 ### Functional Requirements
 
-- **FR-001**: System MUST display the full Serre Chevalier ski area on an interactive, pannable, zoomable map.
+- **FR-001**: System MUST display the full Serre Chevalier ski area on an interactive, pannable, zoomable Leaflet map using OpenStreetMap tiles.
 - **FR-002**: System MUST color-code ski runs by difficulty: green, blue, red, black.
 - **FR-003**: System MUST display lifts with a visually distinct style from runs.
-- **FR-004**: System MUST provide two drop-down menus for start and end point selection, populated with all available ski area nodes.
+- **FR-004**: System MUST provide two drop-down menus for start and end point selection, populated with lift base station names.
 - **FR-005**: System MUST provide difficulty filter checkboxes (green, blue, red, black), all checked by default.
 - **FR-006**: System MUST provide lift type filter checkboxes (chairlift, gondola, drag lift, cable car), all checked by default.
 - **FR-007**: System MUST compute the shortest-distance route between selected points, respecting active filters.
 - **FR-008**: System MUST exclude filtered-out run difficulties and lift types from route computation (edges removed from graph before routing).
 - **FR-009**: System MUST highlight the computed route on the map with a distinct color and weight.
-- **FR-010**: System MUST display a step-by-step itinerary panel showing: segment name, type (run difficulty or lift type), distance per segment, and total distance.
+- **FR-009b**: System MUST dim/grey filtered-out segments on the map (visible but de-emphasized) when any filter is unchecked.
+- **FR-010**: System MUST display a step-by-step itinerary panel showing: segment name, type (run difficulty or lift type), distance per segment in meters, and total distance in meters.
 - **FR-011**: System MUST display three mode tabs: "Short" (active), "Sport" (disabled), "Safe" (disabled).
 - **FR-012**: System MUST allow port configuration via command-line flag or environment variable (environment variable takes precedence).
-- **FR-013**: System MUST serve the application locally as a single-page web application accessible via browser.
+- **FR-013**: System MUST serve the application locally as a single-page web application built with Leptos (Rust/WASM) and accessible via browser.
 - **FR-014**: System MUST provide ski area data (nodes with altitude, runs with difficulty, lifts with type and coordinates) via a data endpoint.
 - **FR-015**: System MUST accept route requests with start, end, difficulty filter, lift type filter, and mode parameters.
 - **FR-016**: System MUST return a clear error message when no route is found.
@@ -109,7 +110,7 @@ The interface shows three routing mode tabs: "Short" (active and functional), "S
 
 ### Key Entities
 
-- **Node**: A named location in the ski area with an altitude value. Serves as start/end point for route selection.
+- **Node**: A lift base station in the ski area with a name and altitude value. Displayed by station name in drop-downs. Serves as start/end point for route selection.
 - **Run**: A ski run connecting two nodes. Has a difficulty level (green, blue, red, or black), a name, and a distance. Represents downhill travel.
 - **Lift**: A ski lift connecting two nodes. Has a type (chairlift, gondola, drag lift, or cable car), a name, and a distance. Represents uphill travel.
 - **Route**: An ordered sequence of segments (runs and lifts) connecting a start node to an end node, with a total distance.
@@ -126,10 +127,22 @@ The interface shows three routing mode tabs: "Short" (active and functional), "S
 - **SC-006**: Filtered routes never contain segments of excluded types.
 - **SC-007**: The system correctly reports "no route found" for all disconnected start/end pairs after filtering.
 
+## Clarifications
+
+### Session 2026-03-18
+
+- Q: What frontend technology will serve the SPA UI? → A: Leptos (Rust WASM framework)
+- Q: Which JS map library for the interactive map? → A: Leaflet + OpenStreetMap tiles (free, no API key)
+- Q: What happens to filtered-out segments on the map? → A: Dim/grey them (visible but de-emphasized)
+- Q: What distance unit for the itinerary panel? → A: Meters (e.g., "1200 m")
+- Q: How should nodes be displayed in start/end drop-downs? → A: Lift base station name
+
 ## Assumptions
 
 - The existing prototype routing module (JSON data loader, graph construction, Dijkstra algorithm) is stable and correct; it will be integrated as-is.
 - Ski area data is loaded from static JSON files bundled with the application.
+- The frontend is built with Leptos (Rust/WASM), keeping the full stack in Rust with no separate JS build pipeline.
+- The interactive map uses Leaflet (via JS interop from WASM) with free OpenStreetMap tiles; no API key required.
 - The application runs locally only; no remote deployment in this version.
 - No user authentication or session management is needed.
 - The point selection mechanism uses an abstraction layer (e.g., shared setter functions) so map-click selection can be added in a future spec without restructuring.

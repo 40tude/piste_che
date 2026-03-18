@@ -57,8 +57,9 @@ ssr = [
 ]
 
 [package.metadata.leptos]
+# site-root = "target/site"
+site-root = "site"
 output-name = "piste_che"
-site-root = "target/site"
 site-pkg-dir = "pkg"
 style-file = "style/main.css"
 assets-dir = "public"

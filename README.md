@@ -73,9 +73,7 @@ cargo test --test integration
 ## Deploy Heroku
 Heroku does NOT run cargo leptos build
 
-Locallly, `.cargo\config.toml` tells Rust where to compile
-In `.gitignore` we usually do NOT include `target/`
-Here we must make sure `target/site/` is pushed onto Heroku (otherwise nothing happen on screen, no map, no css)
+Here we must make sure `site/` is pushed onto Heroku (otherwise nothing happen on screen, no map, no css)
 Next we build the ressource locally
 
 ```powershell
@@ -84,13 +82,23 @@ cargo leptos build --release
 This generates
 
 ```txt
-target/site/
+site/
   ├── pkg/
   ├── piste_che.css
   └── ...
 ```
 
-See in `.gitignore` and `.sligignore` the `target/` is NOT listed
+See in Cargo.toml
+
+```txt
+[package.metadata.leptos]
+# site-root = "target/site"
+site-root = "site"
+...
+
+```
+
+See in `.gitignore` and `.sligignore` the `site/` is NOT listed
 Commit & Push on Github
 Then push on Heroku where the project is compiled and the resource (css, ) are deployed
 

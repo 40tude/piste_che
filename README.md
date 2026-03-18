@@ -7,27 +7,67 @@
 > More information on this [page](https://www.40tude.fr/docs/06_programmation/rust/005_my_rust_setup_win11/my_rust_setup_win11.html#onedrive).
 
 
+
 ## Description
 
-[Add project description here]
+* The “Piste Che” app creates itineraries for skiers in the Serre Chevalier ski area.
+* Made with Claude Code and Spec Kit
 
-## Installation
+<figure style="text-align: center;">
+<img src="./docs/img00.webp" alt="" width="900" loading="lazy"/>
+<figcaption>...</figcaption>
+</figure>
 
-```bash
-cargo build --release
+
+## Prerequisites
+- Rust stable 1.85+ (edition 2024 support)
+- Make sure Perl is available (mandatory to compile leptos)
+    - winget install StrawberryPerl.StrawberryPerl
+- cargo-leptos: `cargo install cargo-leptos`
+    - This takes several minute (enough for a green tea)
+- Check with `rustup target list --installed | Select-String wasm`
+    - If `wasm32-unknown-unknown` is **NOT** visible then type `rustup target add wasm32-unknown-unknown`
+    - To explain what this is. Rust normally compiles for our PC (x86-64 Windows). wasm32-unknown-unknown is a different compilation target—it produces WebAssembly, the
+  binary format that the browser can execute. cargo-leptos needs it to compile the client-side part of the app.
+
+
+
+## Build
+
+```powershell
+# Development (watch mode with hot-reload)
+cargo leptos watch
+
+# Release build (single binary + WASM bundle)
+cargo leptos build --release
 ```
 
-## Usage
+## Run
 
-```bash
-cargo run
+```powershell
+# Default port (from Cargo.toml site-addr)
+cargo leptos watch
+
+# Custom port via environment variable (takes precedence)
+$env:PORT='3000'; cargo leptos watch
+
+# Release binary with CLI flag
+./target/release/piste_che --port 3000
 ```
 
-## Testing
+Open browser at `http://localhost:3000`.
 
-```bash
+## Test
+
+```powershell
+# All tests (unit + integration)
 cargo test
+
+# Integration tests only (requires server running)
+cargo test --test integration
 ```
+
+
 
 ## License
 

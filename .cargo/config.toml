@@ -6,3 +6,8 @@ rustflags = ["-C", "target-cpu=native"]
 
 # Avoid any issue with OneDrive
 target-dir = "C:/Users/phili/rust_builds/Documents/Programmation/rust/020_serre_che_2"
+
+# wasm-bindgen 0.2.100+ requires reference-types enabled (generates __wbindgen_externref_table_alloc).
+# Do NOT add -C target-feature=-reference-types here -- it breaks wasm-bindgen-cli 0.2.100+.
+[target.wasm32-unknown-unknown]
+rustflags = []

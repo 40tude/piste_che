@@ -1,13 +1,11 @@
 <!--
 Sync Impact Report
 ===================
-Version change: N/A (initial) -> 1.0.0
-Modified principles: N/A (first ratification)
-Added sections:
-  - Core Principles (7 principles)
-  - Tech Stack Constraints
-  - Development Workflow
-  - Governance
+Version change: 1.0.0 -> 1.1.0
+Modified principles:
+  - IV (Simplicity): removed "No SPA framework" constraint, allow Leptos (WASM)
+  - VII (Tech Stack): replaced vanilla JS frontend with Leptos (Rust/WASM)
+Added sections: N/A
 Removed sections: N/A
 Templates requiring updates:
   - .specify/templates/plan-template.md: OK (Constitution Check section is generic)
@@ -48,19 +46,18 @@ reqwest. All tests MUST pass via `cargo test`.
 
 ### IV. Simplicity and MVP Focus
 
-Build only what the MVP requires. No SPA framework -- server-rendered
-HTML + Bootstrap 5 + vanilla JavaScript. No database, no auth, no user
+Build only what the MVP requires. No database, no auth, no user
 accounts, no i18n, no saved itineraries, no real-time status. YAGNI
 applies: do not implement future considerations listed in the spec.
-Desktop-first; basic Bootstrap responsiveness is sufficient.
+Desktop-first; basic responsiveness is sufficient.
 
 ### V. Clean Layering
 
 The existing routing module MUST be wrapped behind a clean Rust
 interface (trait or module boundary). Axum handlers call that interface;
-they do NOT access graph internals directly. The static frontend
-communicates with the backend exclusively via REST JSON endpoints.
-No tight coupling between layers.
+they do NOT access graph internals directly. The Leptos frontend
+communicates with the backend exclusively via server functions or REST
+JSON endpoints. No tight coupling between layers.
 
 ### VI. Structured Observability
 
@@ -77,8 +74,8 @@ justification documented in the plan.
 - **Language:** Rust (stable)
 - **Web framework:** Axum
 - **Async runtime:** Tokio
-- **Frontend:** static HTML + Bootstrap 5 + vanilla JS (served by Axum)
-- **Map:** Leaflet.js with OpenStreetMap tiles
+- **Frontend:** Leptos (Rust/WASM) served by Axum
+- **Map:** Leaflet.js with OpenStreetMap tiles (via JS interop from WASM)
 - **Serialization:** serde + serde_json
 - **CLI:** clap (derive feature) for `--port` flag
 - **Error handling:** thiserror (library modules), anyhow (binary crate)
@@ -130,4 +127,4 @@ Piste Che project. All code changes MUST comply with these principles.
   IV) or Tech Stack (Principle VII) MUST be documented in the plan's
   Complexity Tracking table.
 
-**Version**: 1.0.0 | **Ratified**: 2026-03-18 | **Last Amended**: 2026-03-18
+**Version**: 1.1.0 | **Ratified**: 2026-03-18 | **Last Amended**: 2026-03-18

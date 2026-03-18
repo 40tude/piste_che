@@ -122,8 +122,7 @@ async fn main() -> Result<()> {
     //     .with_state(leptos_options);
 
     let app = Router::new()
-        .nest_service("/pkg", ServeDir::new("site/pkg")) // serve wasm/js/css
-        .nest_service("/", ServeDir::new("site")) // serve root assets (optional but good)
+        .fallback_service(ServeDir::new("site")) // serve everything from site/
         .leptos_routes_with_context(
             &leptos_options,
             routes,

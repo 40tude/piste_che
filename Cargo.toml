@@ -33,6 +33,11 @@ mimalloc = { version = "0.1", optional = true }
 reqwest = { version = "0.12", features = ["json"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
+
+[profile.release]
+strip = "symbols"
+
+
 [features]
 
 default = ["ssr"]

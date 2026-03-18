@@ -14,12 +14,13 @@ use axum::Router;
 use clap::Parser;
 use leptos::config::get_configuration;
 use leptos::prelude::provide_context;
-use leptos_axum::{generate_route_list, LeptosRoutes};
+use leptos_axum::{LeptosRoutes, generate_route_list};
 use piste_che::{
     app::App,
-    routing::{adjacency_from_segments, build_graph, OsmData},
+    routing::{OsmData, adjacency_from_segments, build_graph},
     server::AppState,
 };
+use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
 
 // ---------------------------------------------------------------------------
@@ -53,8 +54,7 @@ async fn main() -> Result<()> {
     // Structured logging: level from RUST_LOG env var, default "info".
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .init();
 
@@ -65,8 +65,8 @@ async fn main() -> Result<()> {
     // Path is relative to the working directory (project root when running
     // with `cargo leptos watch` or from the release binary).
     let data_path = std::path::Path::new("data/20260315_164849_ele.json");
-    let osm = OsmData::load(data_path)
-        .with_context(|| format!("Loading {}", data_path.display()))?;
+    let osm =
+        OsmData::load(data_path).with_context(|| format!("Loading {}", data_path.display()))?;
 
     let (nodes, segments, route_elements) = build_graph(&osm);
     let adjacency = adjacency_from_segments(&segments);
@@ -94,6 +94,10 @@ async fn main() -> Result<()> {
     // Override the configured address with the resolved port so `PORT` env var
     // and `--port` CLI flag both work at runtime.
     leptos_options.site_addr.set_port(port);
+    // BCR
+    leptos_options
+        .site_addr
+        .set_ip(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
     let addr = leptos_options.site_addr;
 
     let routes = generate_route_list(App);

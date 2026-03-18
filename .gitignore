@@ -1,5 +1,4 @@
 target/
 temp/
-docs/
 .env
 .claude/settings.local.json

@@ -21,7 +21,7 @@ use {
 /// Returns full ski area data: nodes, segments, and selectable lift elements.
 ///
 /// Called once on page load; the client caches the response for the session.
-#[server(GetUrl)]
+#[server(endpoint = "get_area")]
 pub async fn get_area() -> Result<AreaResponse, ServerFnError> {
     let state = use_context::<Arc<AppState>>()
         .ok_or_else(|| ServerFnError::new("AppState not in context"))?;
@@ -83,7 +83,7 @@ pub async fn get_area() -> Result<AreaResponse, ServerFnError> {
 /// Returns a [`RouteResponse`] with steps, total distance, and highlight
 /// coordinates.  Sets `error` instead of failing the server function for
 /// expected no-route conditions (same point, disconnected graph).
-#[server(input = Json, output = Json)]
+#[server(endpoint = "compute_route", input = Json, output = Json)]
 pub async fn compute_route(
     start: String,
     end: String,

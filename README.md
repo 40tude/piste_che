@@ -78,7 +78,7 @@ binary must be committed and pushed.
 cargo leptos build --release
 git add site/
 git commit -m "deploy: rebuild assets"
-git push heroku main
+git push heroku main # this take some time on the last line ( Verifying deploy... done.)
 ```
 
 `cargo leptos build --release` generates (in `site/pkg/`):

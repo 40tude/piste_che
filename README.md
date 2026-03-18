@@ -69,6 +69,38 @@ cargo test --test integration
 
 
 
+
+## Deploy Heroku
+Locallly, `.cargo\config.toml` tells Rust where to compile
+In `.gitignore` we usually do NOT include `target/`
+Here we must make sure `target/site/` is pushed onto Heroku (otherwise nothing happen on screen, no map, no css)
+
+```powershell
+# Build ressource locally
+cargo leptos build --release
+```
+This generates
+
+```txt
+target/site/
+  ├── pkg/
+  ├── piste_che.css
+  └── ...
+```
+
+See in `.gitignore` and `.sligignore` the `target/` is NOT listed
+
+
+Commit & Push on Github
+
+```powershell
+git push heroku main
+```
+
+
+
+
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details

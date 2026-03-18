@@ -71,41 +71,34 @@ cargo test --test integration
 
 
 ## Deploy Heroku
-Heroku does NOT run `cargo leptos build`
+Heroku does NOT run `cargo leptos build`. The `site/` folder and the release
+binary must be committed and pushed.
 
-So we must make sure `site/` is pushed onto GitHub and deployed on Heroku
-Otherwise nothing happens on screen, no map, no css
-
-Let's build the ressource locally
+**IMPORTANT:** always run `cargo leptos build --release` immediately before
+committing for Heroku. `cargo leptos watch` (dev) and `cargo leptos build --release` produce different artifact names (`piste_che.wasm` vs
+`piste_che_bg.wasm`). Committing dev artifacts while the JS expects release
+artifacts causes a 404 and a blank page.
 
 ```powershell
 cargo leptos build --release
-```
-This generates
-
-```txt
-site/
-  ├── pkg/
-  ├── piste_che.css
-  └── ...
-```
-
-See why in Cargo.toml
-
-```txt
-[package.metadata.leptos]
-site-root = "site"
-...
-
-```
-
-See in `.gitignore` and `.sligignore` the `site/` is NOT listed
-Commit & Push on Github
-Then push on Heroku where the project is compiled and the resource (css, ) are deployed
-
-```powershell
+git add site/ target/release/piste_che
+git commit -m "deploy: rebuild assets"
 git push heroku main
 ```
+
+`cargo leptos build --release` generates (among others):
+
+```txt
+site/pkg/
+  piste_che.js          <- references piste_che_bg.wasm
+  piste_che_bg.wasm     <- must be committed (new file, easy to miss)
+  piste_che_bg.wasm.d.ts
+  piste_che.css
+  piste_che.d.ts
+```
+
+`site-root = "site"` in `Cargo.toml` controls the output directory.
+`site/` and `target/` are NOT in `.gitignore` so artifacts are versioned.
 
 
 

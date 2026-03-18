@@ -50,7 +50,9 @@ fn resolve_port(cli: &Cli) -> u16 {
 // Entry point
 // ---------------------------------------------------------------------------
 
-#[tokio::main]
+// current_thread: SendWrapper<T> (used by leptos-leaflet) panics when
+// dereferenced from a different thread. Single-threaded runtime avoids this.
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     // Structured logging: level from RUST_LOG env var, default "info".
     tracing_subscriber::fmt()

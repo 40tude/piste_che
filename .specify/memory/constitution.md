@@ -1,50 +1,133 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+===================
+Version change: N/A (initial) -> 1.0.0
+Modified principles: N/A (first ratification)
+Added sections:
+  - Core Principles (7 principles)
+  - Tech Stack Constraints
+  - Development Workflow
+  - Governance
+Removed sections: N/A
+Templates requiring updates:
+  - .specify/templates/plan-template.md: OK (Constitution Check section is generic)
+  - .specify/templates/spec-template.md: OK (user stories + requirements align)
+  - .specify/templates/tasks-template.md: OK (phase structure compatible)
+  - .specify/templates/agent-file-template.md: OK (generic template)
+Follow-up TODOs: None
+-->
+
+# Piste Che Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Preserve Existing Code
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+The prototype routing module (from `serre_che_proto`) and the ski area
+JSON data file MUST be integrated as-is into the project. Do NOT rewrite
+graph construction, JSON parsing, or the Dijkstra implementation. New
+functionality (Sport/Safe weighting strategies) MUST be added on top of
+the existing algorithm. Existing unit tests MUST be preserved and pass.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Graph as Single Source of Truth
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+The custom-format JSON file describing Serre Chevalier is the sole
+authority for the ski area topology. All nodes, edges, altitudes, run
+difficulties, and lift types derive from this file. No database or
+secondary data store is permitted for MVP. The in-memory weighted
+directed graph built at startup is the only runtime representation.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Test-First (NON-NEGOTIABLE)
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+TDD is mandatory: tests MUST be written and fail before implementation.
+Existing routing module tests MUST be preserved unchanged. New unit
+tests MUST cover: Sport/Safe weighting strategies, filter logic
+(difficulty + lift type), edge cases (no route, start == end, all
+segments filtered). Integration tests MUST cover all API endpoints via
+reqwest. All tests MUST pass via `cargo test`.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Simplicity and MVP Focus
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Build only what the MVP requires. No SPA framework -- server-rendered
+HTML + Bootstrap 5 + vanilla JavaScript. No database, no auth, no user
+accounts, no i18n, no saved itineraries, no real-time status. YAGNI
+applies: do not implement future considerations listed in the spec.
+Desktop-first; basic Bootstrap responsiveness is sufficient.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Clean Layering
+
+The existing routing module MUST be wrapped behind a clean Rust
+interface (trait or module boundary). Axum handlers call that interface;
+they do NOT access graph internals directly. The static frontend
+communicates with the backend exclusively via REST JSON endpoints.
+No tight coupling between layers.
+
+### VI. Structured Observability
+
+Use `tracing` + `tracing-subscriber` for all logging. Every API request
+MUST produce a trace span. Routing computations SHOULD log mode, start,
+end, segment count, and total distance. Errors MUST be logged with
+structured context. No `println!` in production code paths.
+
+### VII. Mandated Tech Stack
+
+The following stack is mandatory for MVP. Deviations require explicit
+justification documented in the plan.
+
+- **Language:** Rust (stable)
+- **Web framework:** Axum
+- **Async runtime:** Tokio
+- **Frontend:** static HTML + Bootstrap 5 + vanilla JS (served by Axum)
+- **Map:** Leaflet.js with OpenStreetMap tiles
+- **Serialization:** serde + serde_json
+- **CLI:** clap (derive feature) for `--port` flag
+- **Error handling:** thiserror (library modules), anyhow (binary crate)
+- **Logging:** tracing + tracing-subscriber
+- **Testing:** cargo test, reqwest (integration), mockall (mocking)
+- **Utilities:** derive_more, itertools, regex, rand (as needed)
+
+## Tech Stack Constraints
+
+- `PORT` env var takes precedence over `--port` CLI flag (Heroku convention)
+- A `Procfile` MUST be present for Heroku deployment
+- Static assets served from `/static` path by Axum
+- API prefix: `/api/` for all JSON endpoints
+- No external databases -- all data loaded in-memory from JSON at startup
+- Edge weights are distance in meters; Sport/Safe modes apply multipliers
+- Runs are color-coded: green, blue, red, black
+- Lifts have types: chairlift, gondola, drag lift, cable car
+- Filters remove edges from the graph before routing (not post-filtering)
+
+## Development Workflow
+
+1. **Integrate first:** copy existing routing module code into the
+   project, verify all existing tests pass before writing new code.
+2. **Branch per feature:** each feature gets its own branch.
+3. **TDD cycle:** write failing test, implement, refactor. No code
+   without a covering test for new functionality.
+4. **Commit often:** commit after each task or logical group of changes.
+   Commit messages follow `<action>: <what changed>` format, max 50
+   chars, US English.
+5. **Integration tests last:** API integration tests run after unit
+   tests pass for the underlying module.
+6. **Local validation:** `cargo test` MUST pass before any push.
+7. **Heroku deploy:** validate locally with `cargo run -- --port 3000`,
+   then deploy via Heroku Rust buildpack.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices for the
+Piste Che project. All code changes MUST comply with these principles.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- **Amendments** require updating this document, incrementing the
+  version, and recording the amendment date.
+- **Versioning** follows semantic versioning: MAJOR for principle
+  removals/redefinitions, MINOR for new principles or expanded guidance,
+  PATCH for wording clarifications.
+- **Compliance** is verified during plan review (Constitution Check gate
+  in plan.md) and before merging any feature branch.
+- **Complexity justification:** any deviation from Simplicity (Principle
+  IV) or Tech Stack (Principle VII) MUST be documented in the plan's
+  Complexity Tracking table.
+
+**Version**: 1.0.0 | **Ratified**: 2026-03-18 | **Last Amended**: 2026-03-18

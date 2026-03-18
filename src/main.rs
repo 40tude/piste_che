@@ -22,7 +22,7 @@ use piste_che::{
 };
 use std::net::{IpAddr, Ipv4Addr}; // BCR
 use std::sync::Arc;
-use tower_http::services::ServeDir; // BCR
+use tower_http::services::{ServeDir, ServeFile}; // BCR
 
 // ---------------------------------------------------------------------------
 // CLI
@@ -124,6 +124,12 @@ async fn main() -> Result<()> {
     //     .with_state(leptos_options);
 
     let app = Router::new()
+        // cargo-leptos 0.3.x renames piste_che_bg.wasm -> piste_che.wasm but
+        // does not patch the JS reference. Alias the expected name to the real file.
+        .route_service(
+            "/pkg/piste_che_bg.wasm",
+            ServeFile::new("site/pkg/piste_che.wasm"),
+        )
         .fallback_service(ServeDir::new("site")) // serve everything from site/
         .leptos_routes_with_context(
             &leptos_options,

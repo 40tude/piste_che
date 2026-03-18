@@ -1,0 +1,26 @@
+# Slugignore - files to exclude from Heroku slug
+
+# Development files
+.cargo/
+.claude/
+.git/
+.specify/
+docs/
+specs/
+tests/
+.gitignore
+
+# Rust development artifacts
+target/
+
+# Test files
+tests/
+benches/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Misc
+*.md
+LICENSE

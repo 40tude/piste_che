@@ -88,7 +88,9 @@ async fn main() -> Result<()> {
     });
 
     // Leptos configuration from Cargo.toml `[package.metadata.leptos]`.
-    let conf = get_configuration(None).context("Reading Leptos configuration")?;
+    // let conf = get_configuration(None).context("Reading Leptos configuration")?;
+    // BCR - Fix issue leptos on Heroku
+    let conf = get_configuration(Some("Cargo.toml")).context("Reading Leptos configuration")?;
     let mut leptos_options = conf.leptos_options;
 
     // Override the configured address with the resolved port so `PORT` env var

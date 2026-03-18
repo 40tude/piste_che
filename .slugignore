@@ -10,9 +10,6 @@ specs/
 tests/
 .gitignore
 
-# Rust development artifacts
-# target/
-
 # Test files
 tests/
 benches/

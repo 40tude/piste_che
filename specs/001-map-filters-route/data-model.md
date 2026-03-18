@@ -97,15 +97,26 @@ One step in the itinerary panel.
 | difficulty | String | `difficulty` |
 | distance_m | u32 | `distance_m` |
 
+### AreaResponse
+
+Top-level response for `get_area()`. Wraps all map/dropdown data in one payload.
+
+| Field | Type | JSON key |
+|-------|------|----------|
+| nodes | Vec\<AreaNode\> | `nodes` |
+| segments | Vec\<AreaSegment\> | `segments` |
+| selectable_elements | Vec\<SelectableElement\> | `selectable_elements` |
+
 ### RouteResponse
 
-Server-to-client route computation result.
+Server-to-client route computation result. On failure, `steps` is empty and `error` is set.
 
 | Field | Type | JSON key |
 |-------|------|----------|
 | steps | Vec\<RouteStep\> | `steps` |
 | total_distance_m | u32 | `total_distance_m` |
 | highlight_coords | Vec\<Vec\<[f64; 2]\>\> | `highlight_coords` (segment polylines for map overlay) |
+| error | Option\<String\> | `error` (Some when no route found, same start/end, or invalid input) |
 
 ### RouteError
 

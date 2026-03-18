@@ -10,7 +10,7 @@ Build the core Piste Che MVP: an interactive Leaflet map of Serre Chevalier, sta
 ## Technical Context
 
 **Language/Version**: Rust stable (edition 2024, requires Rust 1.85+)
-**Primary Dependencies**: Axum, Tokio, Leptos (SSR + hydrate), leptos_axum, leptos_router, leptos-leaflet, serde/serde_json, clap (derive), tracing/tracing-subscriber, wasm-bindgen (JS interop fallback)
+**Primary Dependencies**: Axum, Tokio, Leptos (SSR + hydrate), leptos_axum, leptos_router, leptos-leaflet, serde/serde_json, clap (derive), tracing/tracing-subscriber, wasm-bindgen (JS interop fallback), thiserror (library error types), anyhow (binary error handling)
 **Storage**: In-memory directed graph built at startup from bundled JSON (no database)
 **Testing**: cargo test (unit), reqwest (integration), mockall (mocking)
 **Target Platform**: Local web server (Axum) + browser WASM (Leptos hydrate)

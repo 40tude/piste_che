@@ -104,7 +104,7 @@ The interface shows three routing mode tabs: "Short" (active and functional), "S
 - **FR-015**: System MUST accept route requests with start, end, difficulty filter, lift type filter, and mode parameters.
 - **FR-016**: System MUST return a clear error message when no route is found.
 - **FR-017**: System MUST reuse the existing prototype routing module (data loader, graph construction, Dijkstra algorithm) without rewriting or restructuring.
-- **FR-018**: System MUST preserve and pass all existing prototype routing tests.
+- **FR-018**: System MUST write and pass new unit tests covering routing edge cases (no route, start == end, all segments filtered) as mandated by Principle III. Note: the prototype has no existing test files (confirmed in research.md R5); this requirement targets new test coverage, not preservation of prior tests.
 - **FR-019**: System MUST architect the point selection mechanism so that map-click selection can be added alongside drop-downs in a future version without restructuring.
 - **FR-020**: System MUST accept a routing mode parameter from the start so that Sport/Safe modes can be wired in later without changing the interface contract.
 

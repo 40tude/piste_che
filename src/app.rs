@@ -13,7 +13,7 @@ use crate::components::{
     mode_tabs::ModeTabs,
     selector::SelectorPanel,
 };
-use crate::models::{RouteStep, SelectableElement};
+use crate::models::{HighlightSegment, RouteStep, SelectableElement};
 use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::{
@@ -57,7 +57,7 @@ fn HomePage() -> impl IntoView {
     let end = RwSignal::new(String::new());
 
     // US2: computed route state
-    let route_coords = RwSignal::new(Vec::<Vec<[f64; 2]>>::new());
+    let route_segments = RwSignal::new(Vec::<HighlightSegment>::new());
     let route_steps = RwSignal::new(Vec::<RouteStep>::new());
     let route_total = RwSignal::new(0u32);
     let route_error: RwSignal<Option<String>> = RwSignal::new(None);
@@ -85,7 +85,7 @@ fn HomePage() -> impl IntoView {
         if let Some(result) = compute_action.value().get() {
             match result {
                 Ok(resp) => {
-                    route_coords.set(resp.highlight_coords);
+                    route_segments.set(resp.highlight_segments);
                     route_steps.set(resp.steps);
                     route_total.set(resp.total_distance_m);
                     route_error.set(resp.error);
@@ -146,7 +146,7 @@ fn HomePage() -> impl IntoView {
                                     view! {
                                         <SkiMap
                                             segments=segments.read_only()
-                                            route_coords=route_coords.read_only()
+                                            route_segments=route_segments.read_only()
                                             excluded_difficulties=excluded_difficulties
                                                 .read_only()
                                             excluded_lift_types=excluded_lift_types.read_only()

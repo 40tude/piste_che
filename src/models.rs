@@ -62,6 +62,14 @@ pub struct RouteStep {
     pub distance_m: u32,
 }
 
+/// One highlighted segment in the route overlay (preserves kind + difficulty for coloring).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HighlightSegment {
+    pub coords: Vec<[f64; 2]>,
+    pub kind: String,
+    pub difficulty: String,
+}
+
 /// Server-to-client route computation result.
 ///
 /// On failure `steps` is empty and `error` contains the reason.
@@ -69,7 +77,7 @@ pub struct RouteStep {
 pub struct RouteResponse {
     pub steps: Vec<RouteStep>,
     pub total_distance_m: u32,
-    /// One polyline per segment in the route for map overlay.
-    pub highlight_coords: Vec<Vec<[f64; 2]>>,
+    /// One entry per named element in the route; carries kind+difficulty for natural coloring.
+    pub highlight_segments: Vec<HighlightSegment>,
     pub error: Option<String>,
 }

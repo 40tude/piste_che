@@ -3,7 +3,7 @@
 // SkiMap component -- renders ski segments and the computed route overlay
 // using leptos-leaflet declarative components.
 
-use crate::models::AreaSegment;
+use crate::models::{AreaSegment, HighlightSegment};
 use leptos::prelude::*;
 use leptos_leaflet::prelude::*;
 
@@ -28,7 +28,7 @@ fn segment_color(kind: &str, difficulty: &str) -> &'static str {
 #[component]
 pub fn SkiMap(
     segments: ReadSignal<Vec<AreaSegment>>,
-    route_coords: ReadSignal<Vec<Vec<[f64; 2]>>>,
+    route_segments: ReadSignal<Vec<HighlightSegment>>,
     excluded_difficulties: ReadSignal<Vec<String>>,
     excluded_lift_types: ReadSignal<Vec<String>>,
 ) -> impl IntoView {
@@ -56,6 +56,7 @@ pub fn SkiMap(
                 segments
                     .get()
                     .into_iter()
+                    .filter(|seg| seg.kind == "piste" || seg.kind == "lift")
                     .map(|seg| {
                         let opacity: f64 = if seg.kind == "lift" {
                             // Lift type filtering uses difficulty field (stored as lift subtype).
@@ -87,17 +88,18 @@ pub fn SkiMap(
                     .collect_view()
             }}
 
-            // Route highlight overlay (yellow, weight 6, rendered on top).
+            // Route highlight overlay: natural color, weight 6, always fully opaque.
             {move || {
-                route_coords
+                route_segments
                     .get()
                     .into_iter()
-                    .map(|coords| {
+                    .map(|hs| {
                         let positions: Vec<Position> =
-                            coords.iter().map(|c| Position::new(c[0], c[1])).collect();
-                        let positions_sig =
-                            Signal::derive(move || positions.clone());
-                        let color_sig = Signal::derive(|| "#facc15".to_string());
+                            hs.coords.iter().map(|c| Position::new(c[0], c[1])).collect();
+                        let positions_sig = Signal::derive(move || positions.clone());
+                        let color =
+                            segment_color(&hs.kind, &hs.difficulty).to_string();
+                        let color_sig = Signal::derive(move || color.clone());
                         let weight_sig = Signal::derive(|| Some(6.0_f64));
                         let opacity_sig = Signal::derive(|| Some(1.0_f64));
                         view! {

@@ -5,7 +5,7 @@
 // generates full implementations under `ssr` and HTTP stubs under `hydrate`.
 
 // Return types must be visible to both SSR and hydrate for deserialization.
-use crate::models::{AreaResponse, RouteResponse};
+use crate::models::{AreaResponse, HighlightSegment, RouteResponse};
 use leptos::prelude::*;
 use leptos::server_fn::codec::Json;
 
@@ -156,7 +156,7 @@ pub async fn compute_route(
         return Ok(RouteResponse {
             steps: vec![],
             total_distance_m: 0,
-            highlight_coords: vec![],
+            highlight_segments: vec![],
             error: Some(format!("No route found between '{start}' and '{end}'")),
         });
     };
@@ -169,7 +169,7 @@ pub async fn compute_route(
         difficulty: start_el.difficulty.clone(),
         distance_m: start_dist,
     }];
-    let mut highlight_coords: Vec<Vec<[f64; 2]>> =
+    let mut highlight_segments: Vec<HighlightSegment> =
         vec![element_highlight(start_el, &state.segments)];
     let mut total_distance_m: u32 = start_dist;
 
@@ -193,7 +193,11 @@ pub async fn compute_route(
                 difficulty: seg.difficulty.clone(),
                 distance_m: dist,
             });
-            highlight_coords.push(seg.coords.iter().map(|c| [c[0], c[1]]).collect());
+            highlight_segments.push(HighlightSegment {
+                coords: seg.coords.iter().map(|c| [c[0], c[1]]).collect(),
+                kind: seg.kind.clone(),
+                difficulty: seg.difficulty.clone(),
+            });
             total_distance_m = total_distance_m.saturating_add(dist);
             last_name = seg.name.as_str();
         }
@@ -208,7 +212,7 @@ pub async fn compute_route(
             difficulty: end_el.difficulty.clone(),
             distance_m: end_dist,
         });
-        highlight_coords.push(element_highlight(end_el, &state.segments));
+        highlight_segments.push(element_highlight(end_el, &state.segments));
         total_distance_m = total_distance_m.saturating_add(end_dist);
     }
 
@@ -223,7 +227,7 @@ pub async fn compute_route(
     Ok(RouteResponse {
         steps,
         total_distance_m,
-        highlight_coords,
+        highlight_segments,
         error: None,
     })
 }
@@ -252,11 +256,16 @@ fn element_distance(el: &RouteElement, segments: &[Segment]) -> u32 {
 }
 
 #[cfg(feature = "ssr")]
-/// Collect lat/lon coords for an element's segments for the highlight overlay.
-fn element_highlight(el: &RouteElement, segments: &[Segment]) -> Vec<[f64; 2]> {
-    segments
+/// Collect coords + kind/difficulty for a route element's segments (highlight overlay).
+fn element_highlight(el: &RouteElement, segments: &[Segment]) -> HighlightSegment {
+    let coords = segments
         .iter()
         .filter(|s| s.name == el.name && s.kind == el.kind)
         .flat_map(|s| s.coords.iter().map(|c| [c[0], c[1]]))
-        .collect()
+        .collect();
+    HighlightSegment {
+        coords,
+        kind: el.kind.clone(),
+        difficulty: el.difficulty.clone(),
+    }
 }

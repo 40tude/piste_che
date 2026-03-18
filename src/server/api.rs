@@ -5,14 +5,14 @@
 // generates full implementations under `ssr` and HTTP stubs under `hydrate`.
 
 // Return types must be visible to both SSR and hydrate for deserialization.
-use crate::models::{AreaResponse, HighlightSegment, RouteResponse};
+use crate::models::{AreaResponse, RouteResponse};
 use leptos::prelude::*;
 use leptos::server_fn::codec::Json;
 
 // SSR-only: routing types, application state, and internal model constructors.
 #[cfg(feature = "ssr")]
 use {
-    crate::models::{AreaNode, AreaSegment, RouteStep, SelectableElement},
+    crate::models::{AreaNode, AreaSegment, HighlightSegment, RouteStep, SelectableElement},
     crate::routing::{arrival_zone, dijkstra, segment_length, RouteElement, Segment},
     crate::server::AppState,
     std::sync::Arc,
@@ -108,7 +108,7 @@ pub async fn compute_route(
         return Ok(RouteResponse {
             steps: vec![],
             total_distance_m: 0,
-            highlight_coords: vec![],
+            highlight_segments: vec![],
             error: Some(format!("Mode '{mode}' is not implemented; use 'short'")),
         });
     }
@@ -118,7 +118,7 @@ pub async fn compute_route(
         return Ok(RouteResponse {
             steps: vec![],
             total_distance_m: 0,
-            highlight_coords: vec![],
+            highlight_segments: vec![],
             error: Some("Start and end points are the same".to_string()),
         });
     }

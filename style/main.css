@@ -1,0 +1,263 @@
+/* Piste Che -- main stylesheet */
+
+/* ---- Design tokens ---- */
+:root {
+    --color-novice:       #22c55e;  /* green */
+    --color-easy:         #3b82f6;  /* blue */
+    --color-intermediate: #ef4444;  /* red */
+    --color-advanced:     #1e293b;  /* black */
+    --color-freeride:     #1e293b;  /* black (dashed in map) */
+    --color-lift:         #f59e0b;  /* amber */
+    --color-route:        #facc15;  /* yellow */
+
+    --sidebar-width: 320px;
+    --sidebar-bg:    #ffffff;
+    --sidebar-border:#e2e8f0;
+    --gap:           0.75rem;
+    --radius:        4px;
+}
+
+/* ---- Reset ---- */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    height: 100vh;
+    overflow: hidden;
+    background: #f1f5f9;
+}
+
+/* ---- Layout ---- */
+.layout {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+}
+
+.sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    padding: var(--gap);
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+    z-index: 10;
+}
+
+.map-container {
+    flex: 1;
+    height: 100vh;
+    position: relative;
+}
+
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #64748b;
+    font-size: 1rem;
+}
+
+/* ---- Mode tabs (US4) ---- */
+.mode-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--sidebar-border);
+    padding-bottom: var(--gap);
+}
+
+.tab {
+    flex: 1;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius);
+    background: #f8fafc;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.15s;
+}
+
+.tab:hover:not(:disabled) {
+    background: #e2e8f0;
+}
+
+.tab-active {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: #3b82f6;
+}
+
+.tab-disabled,
+.tab:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ---- Filter panel (US3) ---- */
+.filter-panel {
+    border-bottom: 1px solid var(--sidebar-border);
+    padding-bottom: var(--gap);
+}
+
+.filter-section {
+    margin-bottom: 0.5rem;
+}
+
+.filter-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+}
+
+.filter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0;
+    cursor: pointer;
+    font-size: 13px;
+    user-select: none;
+}
+
+.filter-row input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+/* ---- Selector panel (US2) ---- */
+.selector-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.selector-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.selector-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}
+
+.selector-select {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius);
+    background: #ffffff;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.selector-select:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: -1px;
+}
+
+/* ---- Calculate button ---- */
+.calculate-btn {
+    width: 100%;
+    padding: 0.5rem;
+    background: #3b82f6;
+    color: #ffffff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.calculate-btn:hover {
+    background: #2563eb;
+}
+
+.calculate-btn:active {
+    background: #1d4ed8;
+}
+
+/* ---- Itinerary panel (US2) ---- */
+.itinerary-panel {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.itinerary-error {
+    color: #ef4444;
+    font-size: 13px;
+    padding: 0.4rem;
+    background: #fef2f2;
+    border-radius: var(--radius);
+    border: 1px solid #fecaca;
+}
+
+.itinerary-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0;
+}
+
+.itinerary-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.35rem 0.5rem;
+    border-radius: var(--radius);
+    background: #f8fafc;
+    border: 1px solid var(--sidebar-border);
+}
+
+.step-name {
+    font-weight: 500;
+    font-size: 13px;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.step-meta {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.itinerary-total {
+    margin-top: 0.5rem;
+    font-weight: 600;
+    font-size: 13px;
+    color: #1e293b;
+    text-align: right;
+}
+
+/* ---- Not found ---- */
+.not-found {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-size: 1.25rem;
+    color: #64748b;
+}

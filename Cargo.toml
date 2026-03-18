@@ -3,4 +3,107 @@ name = "piste_che"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
+# Shared: server + WASM client
+leptos        = { version = "0.7", features = [] }
+leptos_meta   = { version = "0.7", features = [] }
+leptos_router = { version = "0.7", features = [] }
+leptos-leaflet = { version = "0.9", features = [] }
+serde         = { version = "1",   features = ["derive"] }
+serde_json    = "1"
+wasm-bindgen  = "0.2"
+tracing       = "0.1"
+thiserror     = "2"
+
+# SSR-only (enabled by "ssr" feature)
+leptos_axum          = { version = "0.7", optional = true }
+axum                 = { version = "0.7", optional = true }
+tokio                = { version = "1",   features = ["full"], optional = true }
+tracing-subscriber   = { version = "0.3", features = ["env-filter"], optional = true }
+clap                 = { version = "4",   features = ["derive"], optional = true }
+anyhow               = { version = "1",   optional = true }
+mimalloc             = { version = "0.1", optional = true }
+
+[dev-dependencies]
+reqwest = { version = "0.12", features = ["json"] }
+tokio   = { version = "1",   features = ["rt-multi-thread", "macros"] }
+
+[features]
+hydrate = [
+    "leptos/hydrate",
+]
+ssr = [
+    "dep:leptos_axum",
+    "dep:axum",
+    "dep:tokio",
+    "dep:tracing-subscriber",
+    "dep:clap",
+    "dep:anyhow",
+    "dep:mimalloc",
+    "leptos/ssr",
+    "leptos_meta/ssr",
+    "leptos_router/ssr",
+]
+
+[package.metadata.leptos]
+output-name  = "piste_che"
+site-root    = "target/site"
+site-pkg-dir = "pkg"
+style-file   = "style/main.css"
+assets-dir   = "public"
+site-addr    = "127.0.0.1:3000"
+reload-port  = 3001
+end2end-cmd  = "cargo test --test integration"
+bin-features = ["ssr"]
+lib-features = ["hydrate"]
+
+[lints.rust]
+ambiguous_negative_literals   = "warn"
+missing_debug_implementations = "warn"
+redundant_imports             = "warn"
+redundant_lifetimes           = "warn"
+trivial_numeric_casts         = "warn"
+unsafe_op_in_unsafe_fn        = "warn"
+unused_lifetimes              = "warn"
+
+[lints.clippy]
+cargo      = { level = "warn", priority = -1 }
+complexity  = { level = "warn", priority = -1 }
+correctness = { level = "warn", priority = -1 }
+pedantic    = { level = "warn", priority = -1 }
+perf        = { level = "warn", priority = -1 }
+style       = { level = "warn", priority = -1 }
+suspicious  = { level = "warn", priority = -1 }
+
+allow_attributes_without_reason   = "warn"
+as_pointer_underscore             = "warn"
+assertions_on_result_states       = "warn"
+clone_on_ref_ptr                  = "warn"
+deref_by_slicing                  = "warn"
+disallowed_script_idents          = "warn"
+empty_drop                        = "warn"
+empty_enum_variants_with_brackets = "warn"
+empty_structs_with_brackets       = "warn"
+fn_to_numeric_cast_any            = "warn"
+if_then_some_else_none            = "warn"
+map_err_ignore                    = "warn"
+redundant_type_annotations        = "warn"
+renamed_function_params           = "warn"
+semicolon_outside_block           = "warn"
+string_to_string                  = "warn"
+undocumented_unsafe_blocks        = "warn"
+unnecessary_safety_comment        = "warn"
+unnecessary_safety_doc            = "warn"
+unneeded_field_pattern            = "warn"
+unused_result_ok                  = "warn"
+
+# Allow literal strings with formatting args in tracing macros
+literal_string_with_formatting_args = "allow"
+
+# Suppress overly strict doc-lints for application code
+missing_errors_doc         = "allow"
+missing_panics_doc         = "allow"
+module_name_repetitions    = "allow"

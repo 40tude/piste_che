@@ -106,7 +106,10 @@ async fn main() -> Result<()> {
                 let state = Arc::clone(&state);
                 move || provide_context(Arc::clone(&state))
             },
-            App,
+            {
+                let options = leptos_options.clone();
+                move || shell(options.clone())
+            },
         )
         .fallback(leptos_axum::file_and_error_handler(shell))
         .with_state(leptos_options);
@@ -146,6 +149,7 @@ fn shell(options: leptos::config::LeptosOptions) -> impl leptos::prelude::IntoVi
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
                 <link rel="stylesheet" href="/leaflet.css"/>
+                <script src="/leaflet.js"></script>
                 <AutoReload options=options.clone() />
                 <HydrationScripts options=options.clone()/>
                 <MetaTags/>

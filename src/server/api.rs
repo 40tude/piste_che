@@ -7,7 +7,7 @@
 // Return types must be visible to both SSR and hydrate for deserialization.
 use crate::models::{AreaResponse, RouteResponse};
 use leptos::prelude::*;
-// GetUrl is re-exported by leptos::prelude via server_fn; no separate import needed.
+use leptos::server_fn::codec::Json;
 
 // SSR-only: routing types, application state, and internal model constructors.
 #[cfg(feature = "ssr")]
@@ -83,7 +83,7 @@ pub async fn get_area() -> Result<AreaResponse, ServerFnError> {
 /// Returns a [`RouteResponse`] with steps, total distance, and highlight
 /// coordinates.  Sets `error` instead of failing the server function for
 /// expected no-route conditions (same point, disconnected graph).
-#[server]
+#[server(input = Json, output = Json)]
 pub async fn compute_route(
     start: String,
     end: String,

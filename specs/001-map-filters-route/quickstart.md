@@ -3,8 +3,32 @@
 ## Prerequisites
 
 - Rust stable 1.85+ (edition 2024 support)
+- Make sure Perl is available (mandatory to compile leptos)
+    - winget install StrawberryPerl.StrawberryPerl
 - cargo-leptos: `cargo install cargo-leptos`
-- wasm32-unknown-unknown target: `rustup target add wasm32-unknown-unknown`
+    - This takes several minute (enough for a green tea)
+- Check with `rustup target list --installed | Select-String wasm`
+    - If `wasm32-unknown-unknown` is **NOT** visible then type `rustup target add wasm32-unknown-unknown`
+    - To explain what this is. Rust normally compiles for our PC (x86-64 Windows). wasm32-unknown-unknown is a different compilation target—it produces WebAssembly, the
+  binary format that the browser can execute. cargo-leptos needs it to compile the client-side part of the app.
+
+## Troubleshooting
+
+### wasm-bindgen error: `failed to find the __wbindgen_externref_table_alloc function`
+
+Two causes:
+
+**Cause 1 -- stale front/ cache** (built with pre-0.2.100 wasm-bindgen). Fix: delete cache and rebuild.
+
+```powershell
+# Adjust the path to match target-dir in .cargo/config.toml
+Remove-Item -Recurse -Force "C:\Users\phili\rust_builds\Documents\Programmation\rust\020_serre_che_2\front"
+cargo leptos watch
+```
+
+**Cause 2 -- `-C target-feature=-reference-types` in `.cargo/config.toml`** (wasm-bindgen 0.2.100+
+requires reference-types enabled to generate `__wbindgen_externref_table_alloc`). Fix: ensure
+`[target.wasm32-unknown-unknown]` does NOT include `-reference-types` in rustflags.
 
 ## Build
 

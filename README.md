@@ -71,10 +71,12 @@ cargo test --test integration
 
 
 ## Deploy Heroku
-Heroku does NOT run cargo leptos build
+Heroku does NOT run `cargo leptos build`
 
-Here we must make sure `site/` is pushed onto Heroku (otherwise nothing happen on screen, no map, no css)
-Next we build the ressource locally
+So we must make sure `site/` is pushed onto GitHub and deployed on Heroku
+Otherwise nothing happens on screen, no map, no css
+
+Let's build the ressource locally
 
 ```powershell
 cargo leptos build --release
@@ -88,11 +90,10 @@ site/
   └── ...
 ```
 
-See in Cargo.toml
+See why in Cargo.toml
 
 ```txt
 [package.metadata.leptos]
-# site-root = "target/site"
 site-root = "site"
 ...
 

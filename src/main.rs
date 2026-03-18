@@ -20,8 +20,9 @@ use piste_che::{
     routing::{OsmData, adjacency_from_segments, build_graph},
     server::AppState,
 };
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr}; // BCR
 use std::sync::Arc;
+use tower_http::services::ServeDir; // BCR
 
 // ---------------------------------------------------------------------------
 // CLI
@@ -104,7 +105,25 @@ async fn main() -> Result<()> {
 
     let routes = generate_route_list(App);
 
+    // let app = Router::new()
+    //     .leptos_routes_with_context(
+    //         &leptos_options,
+    //         routes,
+    //         {
+    //             let state = Arc::clone(&state);
+    //             move || provide_context(Arc::clone(&state))
+    //         },
+    //         {
+    //             let options = leptos_options.clone();
+    //             move || shell(options.clone())
+    //         },
+    //     )
+    //     .fallback(leptos_axum::file_and_error_handler(shell))
+    //     .with_state(leptos_options);
+
     let app = Router::new()
+        .nest_service("/pkg", ServeDir::new("site/pkg")) // serve wasm/js/css
+        .nest_service("/", ServeDir::new("site")) // serve root assets (optional but good)
         .leptos_routes_with_context(
             &leptos_options,
             routes,

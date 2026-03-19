@@ -2,23 +2,32 @@
 
 /* ---- Design tokens ---- */
 :root {
-    --color-novice:       #22c55e;  /* green */
-    --color-easy:         #3b82f6;  /* blue */
-    --color-intermediate: #ef4444;  /* red */
-    --color-advanced:     #1e293b;  /* black */
-    --color-freeride:     #1e293b;  /* black (dashed in map) */
-    --color-lift:         #f59e0b;  /* amber */
-    --color-route:        #facc15;  /* yellow */
+    --color-novice: #22c55e;
+    /* green */
+    --color-easy: #3b82f6;
+    /* blue */
+    --color-intermediate: #ef4444;
+    /* red */
+    --color-advanced: #1e293b;
+    /* black */
+    --color-freeride: #1e293b;
+    /* black (dashed in map) */
+    --color-lift: #f59e0b;
+    /* amber */
+    --color-route: #facc15;
+    /* yellow */
 
     --sidebar-width: 320px;
-    --sidebar-bg:    #ffffff;
-    --sidebar-border:#e2e8f0;
-    --gap:           0.75rem;
-    --radius:        4px;
+    --sidebar-bg: #ffffff;
+    --sidebar-border: #e2e8f0;
+    --gap: 0.75rem;
+    --radius: 4px;
 }
 
 /* ---- Reset ---- */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -277,7 +286,7 @@ body {
     font-size: 1.4rem;
     cursor: pointer;
     z-index: 1001;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     align-items: center;
     justify-content: center;
     line-height: 1;
@@ -292,7 +301,7 @@ body {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.4);
+    background: rgba(0, 0, 0, 0.4);
     z-index: 999;
 }
 
@@ -321,7 +330,7 @@ body {
         border-right: none;
         border-top: 1px solid var(--sidebar-border);
         border-radius: 12px 12px 0 0;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
         transform: translateY(100%);
         transition: transform 0.3s ease;
         z-index: 1000;
@@ -339,7 +348,8 @@ body {
 
     .fab {
         display: flex;
-        bottom: 5rem; /* clear mobile browser navigation bar (~56px) */
+        bottom: 10rem;
+        /* clear mobile browser navigation bar (~110px) */
     }
 
     .sidebar-backdrop.active {
@@ -362,7 +372,8 @@ body {
 }
 
 .route-arrow::before {
-    content: "\25B2"; /* BLACK UP-POINTING TRIANGLE -- apex points in travel direction */
+    content: "\25B2";
+    /* BLACK UP-POINTING TRIANGLE -- apex points in travel direction */
     color: white;
     font-size: 14px;
     line-height: 24px;
@@ -377,11 +388,34 @@ body {
 }
 
 /* 8 directional classes (N, NE, E, SE, S, SW, W, NW). */
-.route-arrow-0::before   { transform: rotate(0deg); }
-.route-arrow-45::before  { transform: rotate(45deg); }
-.route-arrow-90::before  { transform: rotate(90deg); }
-.route-arrow-135::before { transform: rotate(135deg); }
-.route-arrow-180::before { transform: rotate(180deg); }
-.route-arrow-225::before { transform: rotate(225deg); }
-.route-arrow-270::before { transform: rotate(270deg); }
-.route-arrow-315::before { transform: rotate(315deg); }
+.route-arrow-0::before {
+    transform: rotate(0deg);
+}
+
+.route-arrow-45::before {
+    transform: rotate(45deg);
+}
+
+.route-arrow-90::before {
+    transform: rotate(90deg);
+}
+
+.route-arrow-135::before {
+    transform: rotate(135deg);
+}
+
+.route-arrow-180::before {
+    transform: rotate(180deg);
+}
+
+.route-arrow-225::before {
+    transform: rotate(225deg);
+}
+
+.route-arrow-270::before {
+    transform: rotate(270deg);
+}
+
+.route-arrow-315::before {
+    transform: rotate(315deg);
+}

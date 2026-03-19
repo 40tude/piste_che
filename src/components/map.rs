@@ -7,23 +7,17 @@ use crate::models::{AreaSegment, HighlightSegment};
 use leptos::prelude::*;
 use leptos_leaflet::prelude::*;
 
-/// Gray applied to every non-route segment when a route is active.
-///
-/// Chosen to remain visible on the typical OSM terrain background (~#cdebb0)
-/// while clearly receding behind the colored route overlay.
-const DIM_COLOR: &str = "#b0b5a8";
-
 /// Map color for a segment given its kind and difficulty.
 fn segment_color(kind: &str, difficulty: &str) -> &'static str {
     if kind == "lift" {
         return "#f59e0b"; // amber
     }
     match difficulty {
-        "novice" => "#22c55e",               // green
-        "easy" => "#3b82f6",                 // blue
+        "novice" => "#22c55e",                // green
+        "easy" => "#3b82f6",                  // blue
         "intermediate" => "#ef4444",          // red
         "advanced" | "freeride" => "#1e293b", // black
-        _ => "#94a3b8",                      // slate (unknown)
+        _ => "#94a3b8",                       // slate (unknown)
     }
 }
 
@@ -115,8 +109,8 @@ pub fn SkiMap(
                     .filter(|seg| seg.kind == "piste" || seg.kind == "lift")
                     .map(|seg| {
                         let (color, weight, opacity): (&str, f64, f64) = if has_route {
-                            // Route active: dim everything to let the overlay stand out.
-                            (DIM_COLOR, 2.0, 0.4)
+                            // Route active: keep natural color but dim weight + opacity.
+                            (segment_color(&seg.kind, &seg.difficulty), 4.0, 0.50)
                         } else {
                             // Normal: natural color, opacity reduced only for filtered-out types.
                             let op = if seg.kind == "lift" {

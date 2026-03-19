@@ -31,6 +31,7 @@ pub fn App() -> impl IntoView {
     let fallback = || view! { <p class="not-found">"Page not found."</p> };
 
     view! {
+        <Meta name="viewport" content="width=device-width, initial-scale=1"/>
         <Stylesheet id="leptos" href="/pkg/piste_che.css"/>
         <link rel="stylesheet" href="/leaflet.css"/>
         <Router>
@@ -64,6 +65,9 @@ fn HomePage() -> impl IntoView {
 
     // US4: active mode (always "short" for MVP)
     let active_mode = RwSignal::new("short".to_string());
+
+    // Mobile bottom-sheet visibility
+    let sidebar_open = RwSignal::new(false);
 
     // --- US1: fetch area data once on load ---
     let area = Resource::new(|| (), |_| async { get_area().await });
@@ -99,8 +103,21 @@ fn HomePage() -> impl IntoView {
 
     view! {
         <div class="layout">
+            // ---- Backdrop (mobile only -- closes bottom sheet on tap) ----
+            <div
+                class="sidebar-backdrop"
+                class:active=move || sidebar_open.get()
+                on:click=move |_| sidebar_open.set(false)
+            />
+
             // ---- Sidebar ----
-            <aside class="sidebar">
+            <aside
+                class="sidebar"
+                class:sidebar-open=move || sidebar_open.get()
+            >
+                // Drag handle indicator (visible on mobile only via CSS)
+                <div class="sidebar-handle"/>
+
                 // US4: mode tabs
                 <ModeTabs active_mode=active_mode.read_only()/>
 
@@ -136,6 +153,14 @@ fn HomePage() -> impl IntoView {
 
             // ---- Map ----
             <div class="map-container">
+                // FAB -- opens bottom sheet on mobile (hidden on desktop via CSS)
+                <button
+                    class="fab"
+                    on:click=move |_| sidebar_open.update(|v| *v = !*v)
+                >
+                    "\u{2630}"
+                </button>
+
                 <Suspense fallback=|| view! { <div class="loading">"Loading map..."</div> }>
                     {move || {
                         area.get().map(|result| {

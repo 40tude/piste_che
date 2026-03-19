@@ -18,6 +18,8 @@
 <figcaption>...</figcaption>
 </figure>
 
+At the time of writing, a version is available on [Heroku](https://piste-che-524529397e99.herokuapp.com/). Works fine on cell phones. It is hosted for free on Heroku and may be slow to startup.
+
 
 ## Prerequisites
 - Rust stable 1.85+ (edition 2024 support)

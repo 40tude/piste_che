@@ -11,7 +11,7 @@
 ## Description
 
 * The “Piste Che” app creates itineraries for skiers in the Serre Chevalier ski area.
-* Made with Claude Code and Spec Kit
+* Made with Rust, Claude Code and Spec Kit
 
 <figure style="text-align: center;">
 <img src="./docs/img00.webp" alt="" width="900" loading="lazy"/>
@@ -21,11 +21,11 @@
 
 ## Prerequisites
 - Rust stable 1.85+ (edition 2024 support)
-- Make sure Perl is available (mandatory to compile leptos)
+- Make sure Perl is available (mandatory to compile `leptos`)
     - `winget install StrawberryPerl.StrawberryPerl`
 - cargo-leptos:
     - `cargo install cargo-leptos`
-    - This takes several minutes (enough for a green tea)
+    - Feel free to grab a green tea, as this will take a few minutes to complete.
 - Check with `rustup target list --installed | Select-String wasm`
     - If `wasm32-unknown-unknown` is **NOT** visible then type `rustup target add wasm32-unknown-unknown`
     - To explain what this is. Rust normally compiles for our PC (x86-64 Windows). `wasm32-unknown-unknown` is a different compilation target. It produces WebAssembly, the binary format that the browser can execute. `cargo-leptos` needs it to compile the client-side part of the app.
@@ -42,6 +42,7 @@ cargo leptos build
 cargo leptos build --release
 ```
 
+
 ## Run Local
 
 ```powershell
@@ -50,9 +51,6 @@ cargo leptos watch
 
 # Custom port via environment variable (takes precedence)
 $env:PORT='3000'; cargo leptos watch
-
-# # Release binary with CLI flag
-# ./target/release/piste_che --port 3000
 ```
 
 Then open browser at `http://localhost:3000`.
@@ -63,38 +61,35 @@ Then open browser at `http://localhost:3000`.
 
 ### Integration tests only
 * **ATTENTION:** requires server running
-* 1 - Start with: cargo leptos watch
-* 2 - Then run: cargo test --test integration
+* 1 - Start the server with: `cargo leptos watch`
+* 2 - Then, in a second terminal, run: `cargo test --test integration`
 
-```powershell
-cargo test --test integration
-```
 
 
 ### All tests (unit + integration)
 * **ATTENTION:** requires server running
-* 1 - Start with: cargo leptos watch
-* 2 - Then run: cargo test --test integration
+* 1 - Start the server with: `cargo leptos watch`
+* 2 - Then run: `cargo test --test integration`
 
-```powershell
-cargo test
-```
 
 
 
 
 ## Deploy Heroku
-Heroku does NOT run `cargo leptos build`. The `site/` folder and the release binary must be committed and pushed.
+Heroku does NOT run `cargo leptos build`. The `site/` folder must be created, committed and pushed.
+
 
 ```powershell
+# Fill the `site/` folder with
 cargo leptos build --release
 
-# Commit using VSCode or
+# Commit using VSCode or using the commands below
 git add site/
 git commit -m "deploy: rebuild assets"
 
 # Push on Heroku
-git push heroku main # this take some time on the last line ( Verifying deploy... done.)
+# This take some time on the last line (Verifying deploy... done.)
+git push heroku main
 ```
 
 Above, `cargo leptos build --release` generates (in `site/pkg/`):
@@ -116,7 +111,7 @@ but the actual file on disk is `piste_che.wasm`. The server aliases the two name
 via a dedicated Axum route (see `src/main.rs`), so no manual rename is needed.
 
 `site-root = "site"` in `Cargo.toml` controls the output directory.
-Only `site/` needs to be committed -- Heroku's Rust buildpack recompiles the
+Only `site/` needs to be committed. Heroku's Rust buildpack recompiles the
 server binary for Linux. The local Windows binary in `target/` is irrelevant.
 
 

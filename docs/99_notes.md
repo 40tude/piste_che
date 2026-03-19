@@ -21,7 +21,11 @@ Penser à **CRÉER DES ISSUES** sur GitHub
     * Faut aller copier/coller/souder les codes qui sont dans
         * https://github.com/40tude/serre_che_proto/tree/main/get_data
         * https://github.com/40tude/serre_che_proto/tree/main/get_elevation
-- [ ] Cliquer sur les noms de pistes ou de remontées (Nom, Lift ou Piste, Preciser les infos du lift (platter, gondola 10p...) ou le niveau de la piste (easy...), Coordonnées et altitude?)
+- [ ] Cliquer sur les noms de pistes ou de remontées
+    * Nom, Lift ou Piste,
+    * Preciser les infos du lift (platter, gondola 10p...)
+    * ou le niveau de la piste (easy...),
+    * Comme on clique sur une piste ou ue remonté peut on afficher les coordonnées et l'altitude (on fait une regression lineaire avec les 2 points autour?)
 - [ ] Cliquer pour sélectionner le point de départ et le point d'arrivée (comment on gère si on clique au milieu de nulle part)
 
 

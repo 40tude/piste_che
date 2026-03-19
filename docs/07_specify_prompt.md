@@ -28,3 +28,13 @@ Source code to port and merge (both are existing Rust CLIs):
 - Add `resort_generator` to root Cargo.toml `[workspace]` members
 - No GUI, no scheduler -- manual invocation only
 - Extensibility: adding a new resort = adding one config, zero core changes
+
+
+
+
+<!-- ################################################# -->
+A la fin je fait créer une issue sur GitHub
+Quand tout est OK je passe la slash command
+
+/speckit.specify
+We We want to implement the feature described in GitHub issue #3:                                                                                                                              Add a new Cargo workspace member resort_generator: a single CLI binary that                                                                                                                 fetches trail and elevation data for a ski resort, merges the results, and                                                                                                                  writes a timestamped JSON file to data/ folder.

@@ -18,7 +18,7 @@ use leptos_axum::{LeptosRoutes, generate_route_list};
 use piste_che::{
     app::App,
     routing::{OsmData, adjacency_from_segments, build_graph},
-    server::{api::build_area_response, AppState},
+    server::{AppState, api::build_area_response},
 };
 use std::net::{IpAddr, Ipv4Addr}; // BCR
 use std::sync::Arc;
@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
     // Load the bundled ski area data file.
     // Path is relative to the working directory (project root when running
     // with `cargo leptos watch` or from the release binary).
-    let data_path = std::path::Path::new("data/20260315_164849_ele.json");
+    let data_path = std::path::Path::new("data/serre_chevalier_20260319_221219.json");
     let osm =
         OsmData::load(data_path).with_context(|| format!("Loading {}", data_path.display()))?;
 
@@ -126,13 +126,16 @@ async fn main() -> Result<()> {
     let app = Router::new()
         // Explicit GET handler: Leptos server functions default to POST, but
         // REST clients and integration tests expect GET for a read-only endpoint.
-        .route("/api/get_area", axum::routing::get({
-            let state = Arc::clone(&state);
-            move || {
+        .route(
+            "/api/get_area",
+            axum::routing::get({
                 let state = Arc::clone(&state);
-                async move { axum::Json(build_area_response(&state)) }
-            }
-        }))
+                move || {
+                    let state = Arc::clone(&state);
+                    async move { axum::Json(build_area_response(&state)) }
+                }
+            }),
+        )
         // cargo-leptos 0.3.x renames piste_che_bg.wasm -> piste_che.wasm but
         // does not patch the JS reference. Alias the expected name to the real file.
         .route_service(

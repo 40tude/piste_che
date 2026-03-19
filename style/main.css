@@ -339,6 +339,7 @@ body {
 
     .fab {
         display: flex;
+        bottom: 5rem; /* clear mobile browser navigation bar (~56px) */
     }
 
     .sidebar-backdrop.active {

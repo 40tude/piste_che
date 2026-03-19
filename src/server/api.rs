@@ -150,7 +150,7 @@ pub async fn compute_route(
     let excl_diff: Vec<&str> = excluded_difficulties.iter().map(String::as_str).collect();
     let excl_lift: Vec<&str> = excluded_lift_types.iter().map(String::as_str).collect();
 
-    let goal_zone = arrival_zone(end_el.start_node, &state.nodes);
+    let goal_zone = arrival_zone(end_el.start_node, &state.segments);
 
     let mid_path = dijkstra(
         start_el.end_node,
@@ -210,10 +210,16 @@ pub async fn compute_route(
             });
             total_distance_m = total_distance_m.saturating_add(dist);
             last_name = seg.name.as_str();
+        } else if let Some(last_hs) = highlight_segments.last_mut() {
+            // Same-named piste split into subsegments at junctions: extend
+            // the existing highlight rather than discarding subsegment coords.
+            last_hs.coords.extend(seg.coords.iter().map(|c| [c[0], c[1]]));
         }
     }
 
     // End element is always the last step (unless already appended).
+    // Arrivals are lift departure stations -- the user does not take that lift,
+    // so do not highlight it on the map.
     if steps.last().map(|s| s.name.as_str()) != Some(end_el.name.as_str()) {
         let end_dist = element_distance(end_el, &state.segments);
         steps.push(RouteStep {
@@ -222,7 +228,6 @@ pub async fn compute_route(
             difficulty: end_el.difficulty.clone(),
             distance_m: end_dist,
         });
-        highlight_segments.push(element_highlight(end_el, &state.segments));
         total_distance_m = total_distance_m.saturating_add(end_dist);
     }
 

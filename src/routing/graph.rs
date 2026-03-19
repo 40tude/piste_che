@@ -26,9 +26,9 @@ const SPLIT_MAX_ALT: f64 = 100.0;
 const TRAVERSE_RADIUS: f64 = 100.0;
 
 /// Max altitude difference allowed for a traverse edge.
-/// 30 m keeps traverses on flat terrain; larger values let Dijkstra treat
+/// 5 m keeps traverses on flat terrain; larger values let Dijkstra treat
 /// traverse edges as free descents and bypass proper piste segments.
-const TRAVERSE_MAX_ALT: f64 = 30.0;
+const TRAVERSE_MAX_ALT: f64 = 5.0;
 
 /// Max distance between two piste interior points to detect a crossing.
 /// When two pistes pass within this distance at similar altitude, both get
@@ -45,12 +45,12 @@ const CROSSING_MAX_ALT: f64 = 5.0;
 /// Radius for directed lift-exit to piste "ski-out" edges.
 /// Must be >= `SPLIT_RADIUS` (300 m) so every split node triggered by a
 /// lift exit is reachable from that exit via a ski-out edge.
-const SKI_OUT_RADIUS: f64 = 350.0;
+const SKI_OUT_RADIUS: f64 = 100.0;
 
 /// Max descent (lift-exit elevation minus target elevation) for a ski-out edge.
 /// Prevents connecting to nodes far down the mountain; GPS noise allows a
 /// small negative value (target slightly above exit).
-const SKI_OUT_MAX_ALT: f64 = 30.0;
+const SKI_OUT_MAX_ALT: f64 = 10.0;
 
 /// Horizontal radius (metres) for ski-in edges (Step 6c) and the arrival zone.
 ///
@@ -59,7 +59,7 @@ const SKI_OUT_MAX_ALT: f64 = 30.0;
 /// - `arrival_zone`: any node within this radius of the destination counts as arrived.
 ///
 /// Must be >= `SPLIT_RADIUS` (300 m) by the same argument as `SKI_OUT_RADIUS`.
-pub const SKI_IN_RADIUS: f64 = 350.0;
+pub const SKI_IN_RADIUS: f64 = 100.0;
 
 /// Max altitude gain (metres) from a source node to a lift base for a ski-in edge,
 /// and max altitude difference for the arrival zone.
@@ -67,7 +67,7 @@ pub const SKI_IN_RADIUS: f64 = 350.0;
 /// 30 m prevents connecting to lift bases that are significantly higher than
 /// the skier's current position; GPS noise allows 10 m in the other direction
 /// (see Step 6c altitude check).
-pub const SKI_IN_MAX_ALT: f64 = 30.0;
+pub const SKI_IN_MAX_ALT: f64 = 10.0;
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -330,11 +330,32 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
     for pl in &polylines {
         // Locate every node that sits on this polyline.
         let mut boundaries: Vec<(usize, usize)> = Vec::new(); // (coord_idx, node_id)
-        for (ci, coord) in pl.coords.iter().enumerate() {
-            for node in &nodes {
-                if haversine(coord[0], coord[1], node.coord[0], node.coord[1]) < CLUSTER_RADIUS {
-                    boundaries.push((ci, node.id));
-                    break;
+
+        if pl.kind == "lift" {
+            // Lifts must never be split mid-way: boarding is only possible at
+            // the base station.  Restrict to first and last coord so Dijkstra
+            // cannot enter a lift via a traverse edge to an interior node.
+            let n = pl.coords.len();
+            for &ci in &[0, n - 1] {
+                let coord = pl.coords[ci];
+                for node in &nodes {
+                    if haversine(coord[0], coord[1], node.coord[0], node.coord[1]) < CLUSTER_RADIUS
+                    {
+                        if !boundaries.iter().any(|&(_, nid)| nid == node.id) {
+                            boundaries.push((ci, node.id));
+                        }
+                        break;
+                    }
+                }
+            }
+        } else {
+            for (ci, coord) in pl.coords.iter().enumerate() {
+                for node in &nodes {
+                    if haversine(coord[0], coord[1], node.coord[0], node.coord[1]) < CLUSTER_RADIUS
+                    {
+                        boundaries.push((ci, node.id));
+                        break;
+                    }
                 }
             }
         }
@@ -413,6 +434,11 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
     // Directed only (lift-exit -> piste node); not bidirectional, so Dijkstra
     // cannot use them as reverse shortcuts.
     //
+    // One edge per reachable piste: among all nodes of the same named piste
+    // within the radius, only the closest one receives a ski-out edge.
+    // Connecting every node would let Dijkstra skip the start of a piste by
+    // entering further down, which is physically unrealistic.
+    //
     // Excluded targets: other lift-exit nodes (avoids lift-to-lift shortcuts)
     // and lift-base nodes (skier cannot ski-out directly to a next lift base).
     {
@@ -427,12 +453,29 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
             .map(|s| s.to) // after normalization: to = summit
             .collect();
 
+        // Map each node to the piste names that use it (from/to of piste segments).
+        let mut node_piste_names: HashMap<usize, Vec<String>> = HashMap::new();
+        for seg in &segments {
+            if seg.kind == "piste" {
+                node_piste_names
+                    .entry(seg.from)
+                    .or_default()
+                    .push(seg.name.clone());
+                node_piste_names
+                    .entry(seg.to)
+                    .or_default()
+                    .push(seg.name.clone());
+            }
+        }
+
         let exit_ids: Vec<usize> = lift_exit_ids.iter().copied().collect();
         for exit_id in exit_ids {
             let exit = nodes[exit_id].coord;
+
+            // For each reachable piste name, keep only the closest valid node.
+            let mut closest_by_piste: HashMap<String, (f64, usize)> = HashMap::new();
             for node in &nodes {
                 let node_id = node.id;
-                // Skip lift bases and other lift exits.
                 if lift_base_ids.contains(&node_id) || lift_exit_ids.contains(&node_id) {
                     continue;
                 }
@@ -447,17 +490,32 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
                     && descent > -10.0 // allow <=10 m uphill (GPS noise)
                     && descent < SKI_OUT_MAX_ALT
                 {
-                    let id = segments.len();
-                    segments.push(Segment {
-                        id,
-                        from: exit_id,
-                        to: node_id,
-                        name: "ski-out".to_string(),
-                        kind: "ski-out".to_string(),
-                        difficulty: "-".to_string(),
-                        coords: vec![exit, target],
-                    });
+                    if let Some(piste_names) = node_piste_names.get(&node_id) {
+                        for piste_name in piste_names {
+                            let entry = closest_by_piste
+                                .entry(piste_name.clone())
+                                .or_insert((d, node_id));
+                            if d < entry.0 {
+                                *entry = (d, node_id);
+                            }
+                        }
+                    }
                 }
+            }
+
+            // One ski-out edge per reachable piste, to the closest entry node.
+            for (_, (_, target_id)) in closest_by_piste {
+                let target = nodes[target_id].coord;
+                let id = segments.len();
+                segments.push(Segment {
+                    id,
+                    from: exit_id,
+                    to: target_id,
+                    name: "ski-out".to_string(),
+                    kind: "ski-out".to_string(),
+                    difficulty: "-".to_string(),
+                    coords: vec![exit, target],
+                });
             }
         }
     }
@@ -468,6 +526,11 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
     // piste and the nearest lift boarding point when the distance exceeds
     // TRAVERSE_RADIUS.  Directed only (piste node -> lift base); Dijkstra cannot
     // use them as descent shortcuts.
+    //
+    // One edge per reachable piste: among all nodes of the same named piste
+    // within the radius, only the closest one receives a ski-in edge.
+    // Connecting every node would let Dijkstra skip the end of a piste by
+    // branching off to the lift base earlier, which is physically unrealistic.
     //
     // Excluded sources: lift-exit and lift-base nodes to prevent lift-to-lift
     // and base-to-base shortcuts.
@@ -483,12 +546,29 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
             .map(|s| s.to) // after normalization: to = summit
             .collect();
 
+        // Map each node to the piste names that use it (from/to of piste segments).
+        let mut node_piste_names: HashMap<usize, Vec<String>> = HashMap::new();
+        for seg in &segments {
+            if seg.kind == "piste" {
+                node_piste_names
+                    .entry(seg.from)
+                    .or_default()
+                    .push(seg.name.clone());
+                node_piste_names
+                    .entry(seg.to)
+                    .or_default()
+                    .push(seg.name.clone());
+            }
+        }
+
         let base_ids: Vec<usize> = lift_base_ids.iter().copied().collect();
         for base_id in base_ids {
             let base = nodes[base_id].coord;
+
+            // For each reachable piste name, keep only the closest valid node.
+            let mut closest_by_piste: HashMap<String, (f64, usize)> = HashMap::new();
             for node in &nodes {
                 let node_id = node.id;
-                // Skip other lift bases and lift exits.
                 if lift_base_ids.contains(&node_id) || lift_exit_ids.contains(&node_id) {
                     continue;
                 }
@@ -503,17 +583,32 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
                     && ascent > -10.0 // allow <=10 m downhill (GPS noise)
                     && ascent < SKI_IN_MAX_ALT
                 {
-                    let id = segments.len();
-                    segments.push(Segment {
-                        id,
-                        from: node_id,
-                        to: base_id,
-                        name: "ski-in".to_string(),
-                        kind: "ski-in".to_string(),
-                        difficulty: "-".to_string(),
-                        coords: vec![source, base],
-                    });
+                    if let Some(piste_names) = node_piste_names.get(&node_id) {
+                        for piste_name in piste_names {
+                            let entry = closest_by_piste
+                                .entry(piste_name.clone())
+                                .or_insert((d, node_id));
+                            if d < entry.0 {
+                                *entry = (d, node_id);
+                            }
+                        }
+                    }
                 }
+            }
+
+            // One ski-in edge per reachable piste, from the closest exit node.
+            for (_, (_, source_id)) in closest_by_piste {
+                let source = nodes[source_id].coord;
+                let id = segments.len();
+                segments.push(Segment {
+                    id,
+                    from: source_id,
+                    to: base_id,
+                    name: "ski-in".to_string(),
+                    kind: "ski-in".to_string(),
+                    difficulty: "-".to_string(),
+                    coords: vec![source, base],
+                });
             }
         }
     }
@@ -552,22 +647,23 @@ pub fn adjacency_from_segments(segments: &[Segment]) -> HashMap<usize, Vec<usize
     adj
 }
 
-/// Return the set of node IDs within the arrival zone of `goal_node`.
+/// Return the arrival zone for `goal_node` (a lift base).
 ///
-/// Any node within [`SKI_IN_RADIUS`] metres horizontal and [`SKI_IN_MAX_ALT`]
-/// metres vertical of `goal_node` is included, as well as `goal_node` itself.
-/// Passing this set as the Dijkstra goal lets the search stop as soon as the
-/// skier reaches any node in the lift-base vicinity, preventing short connector
-/// pistes from appearing as extra itinerary steps.
-pub fn arrival_zone(goal_node: usize, nodes: &[Node]) -> HashSet<usize> {
-    let gc = nodes[goal_node].coord;
-    nodes
-        .iter()
-        .filter(|n| {
-            let d = haversine(gc[0], gc[1], n.coord[0], n.coord[1]);
-            let de = (gc[2] - n.coord[2]).abs();
-            d < SKI_IN_RADIUS && de < SKI_IN_MAX_ALT
-        })
-        .map(|n| n.id)
-        .collect()
+/// Contains `goal_node` itself plus every node that has a direct `ski-in` edge
+/// into `goal_node`.  Dijkstra stops as soon as any zone node is settled.
+///
+/// Traverse edges are intentionally excluded: because they carry a 10x distance
+/// penalty, Dijkstra always prefers continuing down the piste to the ski-in
+/// source node rather than branching off via a costly traverse.  Including
+/// traverse sources would let Dijkstra stop on an upper piste node that happens
+/// to be within traverse range, leaving the bottom of the piste unhighlighted.
+pub fn arrival_zone(goal_node: usize, segments: &[Segment]) -> HashSet<usize> {
+    let mut zone = HashSet::new();
+    zone.insert(goal_node);
+    for seg in segments {
+        if seg.to == goal_node && seg.kind == "ski-in" {
+            zone.insert(seg.from);
+        }
+    }
+    zone
 }

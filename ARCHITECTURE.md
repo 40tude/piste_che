@@ -24,14 +24,9 @@ What it delivers:
 
 ## 2. Data Pipeline
 
-Raw data flows through two standalone CLIs (separate repo: https://github.com/40tude/serre_che_proto):
+See `resort_generator` sub workspace.
 
-| Step | Tool | Source | Output |
-|---|---|---|---|
-| 1 | `get_data` Rust CLI | OpenStreetMap / Overpass API | `YYYYMMDD_HHMMSS.json` |
-| 2 | `get_elevation` Rust CLI | IGN (5 m precision) | `YYYYMMDD_HHMMSS_ele.json` |
-
-The `_ele` suffix marks elevation-enriched files. Current file: `data/20260315_164849_ele.json`.
+Current file: `data/serre_chevalier_20260319_221219.json`.
 
 `src/routing/data.rs` exposes `find_latest_json()` to auto-select the most recent timestamped file in `data/`, but `src/main.rs` currently hardcodes the path. Future work: wire `find_latest_json()` in main.rs and integrate both CLIs as Cargo sub-workspaces.
 
@@ -212,7 +207,7 @@ piste_che/
 |       |-- graph.rs            # build_graph() 7-step pipeline + tuning constants
 |       `-- dijkstra.rs         # Dijkstra + segment_length + arrival_zone
 |-- data/
-|   `-- 20260315_164849_ele.json  # current elevation-enriched OSM dump
+|   `-- serre_chevalier_20260319_221219.json  # current elevation-enriched OSM dump
 |-- docs/
 |   `-- img00.webp              # app screenshot
 |-- specs/

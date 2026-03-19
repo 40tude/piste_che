@@ -1,3 +1,6 @@
+[workspace]
+members = ["resort_generator"]
+
 [package]
 name = "piste_che"
 version = "0.1.0"

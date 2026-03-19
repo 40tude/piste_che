@@ -5,6 +5,7 @@ Le nom du fichier devra être du style `serre_chevalier_YYYYMMDD_HHMMSS.json` et
 Le code est déjà écrit. Il faut aller copier/coller/fusionner les codes qui sont dans https://github.com/40tude/serre_che_proto/tree/main/get_data et
 https://github.com/40tude/serre_che_proto/tree/main/get_elevation
 
+
 Puis en court de discussion j'ai indiqué
 
 1 resort_generator

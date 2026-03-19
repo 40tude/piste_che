@@ -1,4 +1,4 @@
-// Rust guideline compliant 2026-02-16
+// Rust guideline compliant 2026-03-19
 //
 // SkiMap component -- renders ski segments and the computed route overlay
 // using leptos-leaflet declarative components.
@@ -6,6 +6,12 @@
 use crate::models::{AreaSegment, HighlightSegment};
 use leptos::prelude::*;
 use leptos_leaflet::prelude::*;
+
+/// Gray applied to every non-route segment when a route is active.
+///
+/// Chosen to remain visible on the typical OSM terrain background (~#cdebb0)
+/// while clearly receding behind the colored route overlay.
+const DIM_COLOR: &str = "#b0b5a8";
 
 /// Map color for a segment given its kind and difficulty.
 fn segment_color(kind: &str, difficulty: &str) -> &'static str {
@@ -21,10 +27,59 @@ fn segment_color(kind: &str, difficulty: &str) -> &'static str {
     }
 }
 
+/// Bearing in degrees (0 = north, 90 = east) from first to last coord.
+///
+/// Uses a flat-Earth approximation sufficient for a small ski resort.
+fn route_bearing(coords: &[[f64; 2]]) -> f64 {
+    if coords.len() < 2 {
+        return 0.0;
+    }
+    let first = coords[0];
+    let last = coords[coords.len() - 1];
+    let dlat = last[0] - first[0];
+    let dlon = last[1] - first[1];
+    // atan2(dlon, dlat) yields a clockwise bearing from north in degrees.
+    dlon.atan2(dlat).to_degrees()
+}
+
+/// Middle coordinate of a segment for arrow marker placement.
+fn route_midpoint(coords: &[[f64; 2]]) -> Option<[f64; 2]> {
+    if coords.is_empty() {
+        return None;
+    }
+    Some(coords[coords.len() / 2])
+}
+
+/// CSS class encoding the arrow direction quantized to 8 sectors of 45 degrees.
+///
+/// The leptos-leaflet `rotation` prop relies on `Effect::watch(immediate=false)`,
+/// which never fires for a static signal.  Instead we bake the rotation into a
+/// CSS class so the `::before` pseudo-element carries the correct transform.
+fn arrow_class(bearing: f64) -> &'static str {
+    // Map bearing (0=N, 90=E, 180=S, 270=W) to one of 8 sectors.
+    let b = (bearing.round() as i32).rem_euclid(360) as u32;
+    let sector = (b + 22) / 45 % 8;
+    match sector {
+        0 => "route-arrow route-arrow-0",
+        1 => "route-arrow route-arrow-45",
+        2 => "route-arrow route-arrow-90",
+        3 => "route-arrow route-arrow-135",
+        4 => "route-arrow route-arrow-180",
+        5 => "route-arrow route-arrow-225",
+        6 => "route-arrow route-arrow-270",
+        7 => "route-arrow route-arrow-315",
+        _ => "route-arrow route-arrow-0",
+    }
+}
+
 /// Interactive Leaflet map with ski segments and optional route highlight.
 ///
-/// Segment opacity is 0.2 when the segment's difficulty or lift type is in the
-/// respective excluded set, giving visual feedback for active filters.
+/// When a route is active (`route_segments` non-empty):
+/// - All background segments are dimmed to `DIM_COLOR` (weight 2, opacity 0.4).
+/// - Route segments are rendered as a white halo + difficulty-colored top layer.
+/// - Directional arrow markers are placed at each segment midpoint.
+///
+/// When no route is active, segments render normally with filter-aware opacity.
 #[component]
 pub fn SkiMap(
     segments: ReadSignal<Vec<AreaSegment>>,
@@ -48,33 +103,40 @@ pub fn SkiMap(
                 attribution="&copy; OpenStreetMap contributors"
             />
 
-            // Ski segments -- collect_view avoids keyed-For attribute parsing issues.
-            // Re-renders reactively when segments or filter signals change.
+            // Background ski segments.
+            // Dimmed uniformly when a route is shown; otherwise natural color + filter opacity.
             {move || {
                 let excl_diff = excluded_difficulties.get();
                 let excl_lift = excluded_lift_types.get();
+                let has_route = !route_segments.get().is_empty();
                 segments
                     .get()
                     .into_iter()
                     .filter(|seg| seg.kind == "piste" || seg.kind == "lift")
                     .map(|seg| {
-                        let opacity: f64 = if seg.kind == "lift" {
-                            // Lift type filtering uses difficulty field (stored as lift subtype).
-                            if excl_lift.contains(&seg.difficulty) { 0.2 } else { 1.0 }
+                        let (color, weight, opacity): (&str, f64, f64) = if has_route {
+                            // Route active: dim everything to let the overlay stand out.
+                            (DIM_COLOR, 2.0, 0.4)
                         } else {
-                            if excl_diff.contains(&seg.difficulty) { 0.2 } else { 1.0 }
+                            // Normal: natural color, opacity reduced only for filtered-out types.
+                            let op = if seg.kind == "lift" {
+                                if excl_lift.contains(&seg.difficulty) { 0.2 } else { 1.0 }
+                            } else if excl_diff.contains(&seg.difficulty) {
+                                0.2
+                            } else {
+                                1.0
+                            };
+                            (segment_color(&seg.kind, &seg.difficulty), 3.0, op)
                         };
-                        let color = segment_color(&seg.kind, &seg.difficulty).to_string();
+                        let color = color.to_string();
                         let positions: Vec<Position> = seg
                             .coords
                             .iter()
                             .map(|c| Position::new(c[0], c[1]))
                             .collect();
-                        // Wrap static values in Signal::derive for leptos-leaflet 0.9 API.
-                        let positions_sig =
-                            Signal::derive(move || positions.clone());
+                        let positions_sig = Signal::derive(move || positions.clone());
                         let color_sig = Signal::derive(move || color.clone());
-                        let weight_sig = Signal::derive(|| Some(3.0_f64));
+                        let weight_sig = Signal::derive(move || Some(weight));
                         let opacity_sig = Signal::derive(move || Some(opacity));
                         view! {
                             <Polyline
@@ -88,30 +150,69 @@ pub fn SkiMap(
                     .collect_view()
             }}
 
-            // Route highlight overlay: natural color, weight 6, always fully opaque.
+            // Route overlay -- three passes: white halos, colored lines, direction arrows.
             {move || {
-                route_segments
-                    .get()
-                    .into_iter()
+                let segs = route_segments.get();
+
+                // Pass 1: white halo beneath the colored line (Google Maps glow effect).
+                let halos = segs
+                    .iter()
                     .map(|hs| {
                         let positions: Vec<Position> =
                             hs.coords.iter().map(|c| Position::new(c[0], c[1])).collect();
-                        let positions_sig = Signal::derive(move || positions.clone());
-                        let color =
-                            segment_color(&hs.kind, &hs.difficulty).to_string();
-                        let color_sig = Signal::derive(move || color.clone());
-                        let weight_sig = Signal::derive(|| Some(6.0_f64));
-                        let opacity_sig = Signal::derive(|| Some(1.0_f64));
+                        let pos_sig = Signal::derive(move || positions.clone());
                         view! {
                             <Polyline
-                                positions=positions_sig
-                                color=color_sig
-                                weight=weight_sig
-                                opacity=opacity_sig
+                                positions=pos_sig
+                                color=Signal::derive(|| "#ffffff".to_string())
+                                weight=Signal::derive(|| Some(10.0_f64))
+                                opacity=Signal::derive(|| Some(0.6_f64))
                             />
                         }
                     })
-                    .collect_view()
+                    .collect_view();
+
+                // Pass 2: difficulty-colored line on top of the halo.
+                let lines = segs
+                    .iter()
+                    .map(|hs| {
+                        let color = segment_color(&hs.kind, &hs.difficulty).to_string();
+                        let positions: Vec<Position> =
+                            hs.coords.iter().map(|c| Position::new(c[0], c[1])).collect();
+                        let pos_sig = Signal::derive(move || positions.clone());
+                        let color_sig = Signal::derive(move || color.clone());
+                        view! {
+                            <Polyline
+                                positions=pos_sig
+                                color=color_sig
+                                weight=Signal::derive(|| Some(6.0_f64))
+                                opacity=Signal::derive(|| Some(1.0_f64))
+                            />
+                        }
+                    })
+                    .collect_view();
+
+                // Pass 3: directional arrow at each segment midpoint.
+                // Direction is encoded in the CSS class (see `arrow_class`), not via the
+                // `rotation` prop, which does not fire for static signals.
+                let arrows = segs
+                    .iter()
+                    .filter_map(|hs| {
+                        let mid = route_midpoint(&hs.coords)?;
+                        let class = arrow_class(route_bearing(&hs.coords)).to_string();
+                        let pos = JsSignal::derive_local(move || Position::new(mid[0], mid[1]));
+                        Some(view! {
+                            <Marker
+                                position=pos
+                                icon_class=Signal::derive(move || Some(class.clone()))
+                                icon_size=Signal::derive(|| Some((24.0_f64, 24.0_f64)))
+                                icon_anchor=Signal::derive(|| Some((12.0_f64, 12.0_f64)))
+                            />
+                        })
+                    })
+                    .collect_view();
+
+                view! { {halos} {lines} {arrows} }
             }}
         </MapContainer>
     }

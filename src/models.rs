@@ -58,7 +58,7 @@ pub struct RouteStep {
     pub name: String,
     pub kind: String,
     pub difficulty: String,
-    /// Approximate distance: lifts use 50 m flat cost; pistes use haversine length.
+    /// Haversine distance in metres.
     pub distance_m: u32,
 }
 

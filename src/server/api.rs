@@ -252,12 +252,8 @@ pub async fn compute_route(
 // ---------------------------------------------------------------------------
 
 #[cfg(feature = "ssr")]
-/// Approximate distance for a route step: 50 m for lifts, haversine sum for pistes.
+/// Haversine distance for a route step (lifts and pistes).
 fn element_distance(el: &RouteElement, segments: &[Segment]) -> u32 {
-    if el.kind == "lift" {
-        // 50 m flat cost matching Dijkstra's lift weight constant.
-        return 50;
-    }
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,

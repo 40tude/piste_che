@@ -349,3 +349,38 @@ body {
         display: block;
     }
 }
+
+/* ---- Route direction arrows ---- */
+/* DivIcon with class "route-arrow route-arrow-{deg}".                        */
+/* Rotation is applied via CSS on ::before (not via the leptos-leaflet        */
+/* rotation prop, which only fires on signal changes, not on initial render). */
+/* Leaflet's translate3d is on the outer div; ::before rotation is independent.*/
+.route-arrow {
+    background: transparent !important;
+    border: none !important;
+}
+
+.route-arrow::before {
+    content: "\25B2"; /* BLACK UP-POINTING TRIANGLE -- apex points in travel direction */
+    color: white;
+    font-size: 14px;
+    line-height: 24px;
+    display: block;
+    text-align: center;
+    transform-origin: center;
+    /* Dark outline keeps arrow legible on any piste color. */
+    text-shadow:
+        0 0 3px rgba(0, 0, 0, 0.9),
+        0 0 6px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+}
+
+/* 8 directional classes (N, NE, E, SE, S, SW, W, NW). */
+.route-arrow-0::before   { transform: rotate(0deg); }
+.route-arrow-45::before  { transform: rotate(45deg); }
+.route-arrow-90::before  { transform: rotate(90deg); }
+.route-arrow-135::before { transform: rotate(135deg); }
+.route-arrow-180::before { transform: rotate(180deg); }
+.route-arrow-225::before { transform: rotate(225deg); }
+.route-arrow-270::before { transform: rotate(270deg); }
+.route-arrow-315::before { transform: rotate(315deg); }

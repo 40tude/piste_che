@@ -328,3 +328,52 @@ body {
     display: block;
   }
 }
+
+.route-arrow {
+  background: none !important;
+  border: none !important;
+}
+
+.route-arrow:before {
+  content: "▲";
+  color: #fff;
+  text-align: center;
+  transform-origin: center;
+  text-shadow: 0 0 3px rgba(0, 0, 0, .9), 0 0 6px rgba(0, 0, 0, .6);
+  pointer-events: none;
+  font-size: 14px;
+  line-height: 24px;
+  display: block;
+}
+
+.route-arrow-0:before {
+  transform: rotate(0);
+}
+
+.route-arrow-45:before {
+  transform: rotate(45deg);
+}
+
+.route-arrow-90:before {
+  transform: rotate(90deg);
+}
+
+.route-arrow-135:before {
+  transform: rotate(135deg);
+}
+
+.route-arrow-180:before {
+  transform: rotate(180deg);
+}
+
+.route-arrow-225:before {
+  transform: rotate(225deg);
+}
+
+.route-arrow-270:before {
+  transform: rotate(270deg);
+}
+
+.route-arrow-315:before {
+  transform: rotate(315deg);
+}

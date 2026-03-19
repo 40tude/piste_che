@@ -6,6 +6,10 @@ edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+# [[bin]]
+# name = "piste_che_server"
+# path = "src/main.rs"
+
 [dependencies]
 # Shared: server + WASM client
 leptos = { version = "0.7", features = [] }

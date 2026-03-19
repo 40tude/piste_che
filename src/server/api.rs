@@ -20,12 +20,22 @@ use {
 
 /// Returns full ski area data: nodes, segments, and selectable lift elements.
 ///
-/// Called once on page load; the client caches the response for the session.
+/// Called by the WASM client (POST).  `GET /api/get_area` is handled by a
+/// dedicated Axum route in `main.rs` so that non-Leptos callers (integration
+/// tests, REST clients) can use the idiomatic HTTP method.
 #[server(endpoint = "get_area")]
 pub async fn get_area() -> Result<AreaResponse, ServerFnError> {
     let state = use_context::<Arc<AppState>>()
         .ok_or_else(|| ServerFnError::new("AppState not in context"))?;
+    Ok(build_area_response(&state))
+}
 
+/// Assembles [`AreaResponse`] from application state.
+///
+/// Shared by the Leptos server function (POST) and the Axum GET handler so
+/// both paths return identical data without duplicating logic.
+#[cfg(feature = "ssr")]
+pub fn build_area_response(state: &AppState) -> AreaResponse {
     let nodes: Vec<AreaNode> = state
         .nodes
         .iter()
@@ -71,11 +81,11 @@ pub async fn get_area() -> Result<AreaResponse, ServerFnError> {
         "get_area: {{nodes.count}} nodes, {{segments.count}} segments, {{selectable.count}} selectable",
     );
 
-    Ok(AreaResponse {
+    AreaResponse {
         nodes,
         segments,
         selectable_elements,
-    })
+    }
 }
 
 /// Computes the shortest route between two named elements with optional filters.

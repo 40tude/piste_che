@@ -101,8 +101,8 @@ async fn compute_route_valid_request() {
         "response must contain 'steps'"
     );
     assert!(
-        body.get("highlight_coords").is_some(),
-        "response must contain 'highlight_coords'"
+        body.get("highlight_segments").is_some(),
+        "response must contain 'highlight_segments'"
     );
 }
 

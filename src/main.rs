@@ -18,7 +18,7 @@ use leptos_axum::{LeptosRoutes, generate_route_list};
 use piste_che::{
     app::App,
     routing::{OsmData, adjacency_from_segments, build_graph},
-    server::AppState,
+    server::{api::build_area_response, AppState},
 };
 use std::net::{IpAddr, Ipv4Addr}; // BCR
 use std::sync::Arc;
@@ -124,6 +124,15 @@ async fn main() -> Result<()> {
     //     .with_state(leptos_options);
 
     let app = Router::new()
+        // Explicit GET handler: Leptos server functions default to POST, but
+        // REST clients and integration tests expect GET for a read-only endpoint.
+        .route("/api/get_area", axum::routing::get({
+            let state = Arc::clone(&state);
+            move || {
+                let state = Arc::clone(&state);
+                async move { axum::Json(build_area_response(&state)) }
+            }
+        }))
         // cargo-leptos 0.3.x renames piste_che_bg.wasm -> piste_che.wasm but
         // does not patch the JS reference. Alias the expected name to the real file.
         .route_service(

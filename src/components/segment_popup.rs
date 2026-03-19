@@ -29,6 +29,8 @@ pub struct PopupData {
     pub lon: f64,
     /// Altitude interpolated from the two nearest segment coords (metres).
     pub alt_m: f64,
+    /// Total length of the segment (sum of haversine distances, metres).
+    pub length_m: u32,
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +122,19 @@ pub fn nearest_segment(lat: f64, lon: f64, segments: &[AreaSegment]) -> Option<P
     let c1 = &seg.coords[best_coord_idx + 1];
     let alt_m = c0[2] + best_t * (c1[2] - c0[2]);
 
+    // Total segment length (sum of consecutive haversine distances).
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "length in metres, always positive and < 50 km"
+    )]
+    let length_m = seg
+        .coords
+        .windows(2)
+        .map(|w| haversine(w[0][0], w[0][1], w[1][0], w[1][1]))
+        .sum::<f64>()
+        .round() as u32;
+
     Some(PopupData {
         name: seg.name.clone(),
         kind: seg.kind.clone(),
@@ -129,6 +144,7 @@ pub fn nearest_segment(lat: f64, lon: f64, segments: &[AreaSegment]) -> Option<P
         lat,
         lon,
         alt_m,
+        length_m,
     })
 }
 
@@ -239,7 +255,10 @@ pub fn SegmentPopup(info: RwSignal<Option<PopupData>>) -> impl IntoView {
                             {format!("{:.4}\u{00B0} N  {:.4}\u{00B0} E", data.lat, data.lon)}
                         </div>
                         <div class="popup-alt">
-                            {format!("{} m", data.alt_m.round() as i32)}
+                            {format!("alt: {} m", data.alt_m.round() as i32)}
+                        </div>
+                        <div class="popup-alt">
+                            {format!("len: {} m", data.length_m)}
                         </div>
                     </div>
                 }

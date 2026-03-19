@@ -15,7 +15,12 @@ Penser à **CRÉER DES ISSUES** sur GitHub
 - [x] Problème du bouton bleu invisible sur Edge téléphone => le remonter. Voir `style/main.css` line 342 10rem
 - [x] Créer un document ARCHITECTURE.md qui explique le "making of", les choix etc.
 - [-] ISSUE CREATED - CI/CD faire en sorte de compiler en release et de pousser sur Heroku à chaque push sur GitHub
-- [ ] Recréer l'outil qui génère le `.json` dans le répertoire `data/`. Doit être dans un sous workspace. Le nom `serre_chevalier_YYYYMMDD_HHMMSS.json`. Faut aller copier/coller/souder les codes qui sont dans https://github.com/40tude/serre_che_proto/tree/main/get_data et https://github.com/40tude/serre_che_proto/tree/main/get_elevation
+- [x] Recréer l'outil qui génère le `.json` dans le répertoire `data/`.
+    * Doit être dans un sous workspace.
+    * Le nom `serre_chevalier_YYYYMMDD_HHMMSS.json`.
+    * Faut aller copier/coller/souder les codes qui sont dans
+        * https://github.com/40tude/serre_che_proto/tree/main/get_data
+        * https://github.com/40tude/serre_che_proto/tree/main/get_elevation
 - [ ] Cliquer sur les noms de pistes ou de remontées (Nom, Lift ou Piste, Preciser les infos du lift (platter, gondola 10p...) ou le niveau de la piste (easy...), Coordonnées et altitude?)
 - [ ] Cliquer pour sélectionner le point de départ et le point d'arrivée (comment on gère si on clique au milieu de nulle part)
 

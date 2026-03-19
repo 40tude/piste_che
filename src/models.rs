@@ -1,4 +1,4 @@
-// Rust guideline compliant 2026-02-16
+// Rust guideline compliant 2026-03-19
 //
 // Shared API DTOs -- compiled for both `ssr` (server) and `hydrate` (WASM client).
 // All types derive Serialize + Deserialize for server function transport.
@@ -14,15 +14,19 @@ pub struct AreaNode {
     pub alt: f64,
 }
 
-/// A directed segment projected for map rendering (elevation stripped).
+/// A directed segment projected for map rendering.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AreaSegment {
     pub id: usize,
     pub name: String,
     pub kind: String,
     pub difficulty: String,
-    /// `[lat, lon]` pairs along the arc (no elevation, saves bandwidth).
-    pub coords: Vec<[f64; 2]>,
+    /// Seat count per cabin/chair (aerialway:occupancy), lifts only.
+    pub occupancy: Option<u32>,
+    /// Ride duration in minutes (aerialway:duration), lifts only.
+    pub duration_min: Option<u32>,
+    /// `[lat, lon, elevation_m]` triples along the arc.
+    pub coords: Vec<[f64; 3]>,
 }
 
 /// One entry in the start/end dropdown (lift-type elements only).

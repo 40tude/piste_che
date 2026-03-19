@@ -1,4 +1,4 @@
-// Rust guideline compliant 2026-02-16
+// Rust guideline compliant 2026-03-19
 //
 // Root Leptos application component.  Wires together all user stories:
 //   US1 -- SkiMap with area data
@@ -11,6 +11,7 @@ use crate::components::{
     itinerary::ItineraryPanel,
     map::SkiMap,
     mode_tabs::ModeTabs,
+    segment_popup::{PopupData, SegmentPopup},
     selector::SelectorPanel,
 };
 use crate::models::{HighlightSegment, RouteStep, SelectableElement};
@@ -68,6 +69,9 @@ fn HomePage() -> impl IntoView {
 
     // Mobile bottom-sheet visibility
     let sidebar_open = RwSignal::new(false);
+
+    // Map click popup
+    let popup_info: RwSignal<Option<PopupData>> = RwSignal::new(None);
 
     // --- US1: fetch area data once on load ---
     let area = Resource::new(|| (), |_| async { get_area().await });
@@ -161,6 +165,8 @@ fn HomePage() -> impl IntoView {
                     "\u{2630}"
                 </button>
 
+                <SegmentPopup info=popup_info/>
+
                 <Suspense fallback=|| view! { <div class="loading">"Loading map..."</div> }>
                     {move || {
                         area.get().map(|result| {
@@ -175,6 +181,7 @@ fn HomePage() -> impl IntoView {
                                             excluded_difficulties=excluded_difficulties
                                                 .read_only()
                                             excluded_lift_types=excluded_lift_types.read_only()
+                                            popup_info=popup_info
                                         />
                                     }
                                     .into_any()

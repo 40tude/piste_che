@@ -1,4 +1,4 @@
-// Rust guideline compliant 2026-02-16
+// Rust guideline compliant 2026-03-19
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -182,6 +182,43 @@ impl RawWay {
                 .get("piste:difficulty")
                 .map_or("-", String::as_str)
         }
+    }
+
+    /// Seat count per cabin/chair from `aerialway:occupancy`, lifts only.
+    ///
+    /// Returns `None` when the tag is absent or cannot be parsed as an integer.
+    pub fn occupancy(&self) -> Option<u32> {
+        self.tags
+            .get("aerialway:occupancy")
+            .and_then(|v| v.trim().parse().ok())
+    }
+
+    /// Ride duration in minutes from `aerialway:duration`, lifts only.
+    ///
+    /// Handles both plain integers ("8") and ISO 8601 duration strings ("PT8M").
+    /// Returns `None` when the tag is absent or the format is not recognized.
+    pub fn duration_min(&self) -> Option<u32> {
+        let raw = self.tags.get("aerialway:duration")?;
+        let s = raw.trim();
+        // ISO 8601 subset: "PT<n>M" (minutes only) or "PT<n>H<m>M".
+        if let Some(inner) = s.strip_prefix("PT") {
+            // Try "PT<n>M" first.
+            if let Some(mins) = inner.strip_suffix('M') {
+                if let Ok(m) = mins.parse::<u32>() {
+                    return Some(m);
+                }
+            }
+            // Try "PT<h>H<m>M".
+            if let Some(h_pos) = inner.find('H') {
+                let hours: u32 = inner[..h_pos].parse().ok()?;
+                let rest = &inner[h_pos + 1..];
+                let mins: u32 = rest.strip_suffix('M').and_then(|m| m.parse().ok()).unwrap_or(0);
+                return Some(hours * 60 + mins);
+            }
+            return None;
+        }
+        // Plain integer: treat as minutes.
+        s.parse().ok()
     }
 }
 

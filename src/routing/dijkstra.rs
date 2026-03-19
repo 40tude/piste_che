@@ -115,6 +115,8 @@ mod tests {
             difficulty: difficulty.to_string(),
             // Two coords 100 m apart (approximately)
             coords: vec![[44.9, 6.5, 1800.0], [44.9009, 6.5, 1750.0]],
+            occupancy: None,
+            duration_min: None,
         }
     }
 

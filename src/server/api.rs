@@ -1,4 +1,4 @@
-// Rust guideline compliant 2026-02-16
+// Rust guideline compliant 2026-03-19
 //
 // Server functions -- auto-registered by Leptos under the `/api/` prefix.
 // This module compiles for both `ssr` and `hydrate`; the `#[server]` macro
@@ -55,8 +55,9 @@ pub fn build_area_response(state: &AppState) -> AreaResponse {
             name: s.name.clone(),
             kind: s.kind.clone(),
             difficulty: s.difficulty.clone(),
-            // Drop elevation from coords; only lat/lon needed by the map.
-            coords: s.coords.iter().map(|c| [c[0], c[1]]).collect(),
+            occupancy: s.occupancy,
+            duration_min: s.duration_min,
+            coords: s.coords.iter().map(|c| [c[0], c[1], c[2]]).collect(),
         })
         .collect();
 

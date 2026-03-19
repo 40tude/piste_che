@@ -22,27 +22,27 @@
 ## Prerequisites
 - Rust stable 1.85+ (edition 2024 support)
 - Make sure Perl is available (mandatory to compile leptos)
-    - winget install StrawberryPerl.StrawberryPerl
-- cargo-leptos: `cargo install cargo-leptos`
-    - This takes several minute (enough for a green tea)
+    - `winget install StrawberryPerl.StrawberryPerl`
+- cargo-leptos:
+    - `cargo install cargo-leptos`
+    - This takes several minutes (enough for a green tea)
 - Check with `rustup target list --installed | Select-String wasm`
     - If `wasm32-unknown-unknown` is **NOT** visible then type `rustup target add wasm32-unknown-unknown`
-    - To explain what this is. Rust normally compiles for our PC (x86-64 Windows). wasm32-unknown-unknown is a different compilation target—it produces WebAssembly, the
-  binary format that the browser can execute. cargo-leptos needs it to compile the client-side part of the app.
+    - To explain what this is. Rust normally compiles for our PC (x86-64 Windows). `wasm32-unknown-unknown` is a different compilation target. It produces WebAssembly, the binary format that the browser can execute. `cargo-leptos` needs it to compile the client-side part of the app.
 
 
 
-## Build
+## Build Local
 
 ```powershell
 # Development (watch mode with hot-reload)
-cargo leptos watch
+cargo leptos build
 
 # Release build (single binary + WASM bundle)
 cargo leptos build --release
 ```
 
-## Run
+## Run Local
 
 ```powershell
 # Default port (from Cargo.toml site-addr)
@@ -51,37 +51,54 @@ cargo leptos watch
 # Custom port via environment variable (takes precedence)
 $env:PORT='3000'; cargo leptos watch
 
-# Release binary with CLI flag
-./target/release/piste_che --port 3000
+# # Release binary with CLI flag
+# ./target/release/piste_che --port 3000
 ```
 
-Open browser at `http://localhost:3000`.
+Then open browser at `http://localhost:3000`.
 
-## Test
+
+
+## Test Local
+
+### Integration tests only
+* **ATTENTION:** requires server running
+* 1 - Start with: cargo leptos watch
+* 2 - Then run: cargo test --test integration
 
 ```powershell
-# All tests (unit + integration)
-cargo test
-
-# Integration tests only (requires server running)
 cargo test --test integration
+```
+
+
+### All tests (unit + integration)
+* **ATTENTION:** requires server running
+* 1 - Start with: cargo leptos watch
+* 2 - Then run: cargo test --test integration
+
+```powershell
+cargo test
 ```
 
 
 
 
 ## Deploy Heroku
-Heroku does NOT run `cargo leptos build`. The `site/` folder and the release
-binary must be committed and pushed.
+Heroku does NOT run `cargo leptos build`. The `site/` folder and the release binary must be committed and pushed.
 
 ```powershell
 cargo leptos build --release
+
+# Commit using VSCode or
 git add site/
 git commit -m "deploy: rebuild assets"
+
+# Push on Heroku
 git push heroku main # this take some time on the last line ( Verifying deploy... done.)
 ```
 
-`cargo leptos build --release` generates (in `site/pkg/`):
+Above, `cargo leptos build --release` generates (in `site/pkg/`):
+
 
 ```txt
 site/pkg/
@@ -91,6 +108,8 @@ site/pkg/
   piste_che.css
   piste_che.d.ts
 ```
+
+
 
 **Known cargo-leptos 0.3.x quirk:** the generated JS requests `piste_che_bg.wasm`
 but the actual file on disk is `piste_che.wasm`. The server aliases the two names

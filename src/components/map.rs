@@ -2,9 +2,16 @@
 //
 // SkiMap component -- renders ski segments and the computed route overlay
 // using leptos-leaflet declarative components.
+//
+// Map click handling:
+//   A `MapEvents::mouse_click` callback receives the Leaflet `MouseEvent`,
+//   extracts the lat/lon, finds the nearest segment client-side, interpolates
+//   the altitude, then updates `popup_info` to show the `SegmentPopup`.
 
+use crate::components::segment_popup::{PopupData, nearest_segment};
 use crate::models::{AreaSegment, HighlightSegment};
 use leptos::prelude::*;
+use leptos_leaflet::leaflet::MouseEvent;
 use leptos_leaflet::prelude::*;
 
 /// Map color for a segment given its kind and difficulty.
@@ -66,24 +73,42 @@ fn arrow_class(bearing: f64) -> &'static str {
     }
 }
 
-/// Interactive Leaflet map with ski segments and optional route highlight.
+/// Interactive Leaflet map with ski segments, optional route highlight, and click popup.
 ///
 /// When a route is active (`route_segments` non-empty):
-/// - All background segments are dimmed to `DIM_COLOR` (weight 2, opacity 0.4).
+/// - All background segments are dimmed (weight 4, opacity 0.50).
 /// - Route segments are rendered as a white halo + difficulty-colored top layer.
 /// - Directional arrow markers are placed at each segment midpoint.
 ///
 /// When no route is active, segments render normally with filter-aware opacity.
+///
+/// Clicking any piste or lift polyline (within 30 m) shows a `SegmentPopup`
+/// with name, type, difficulty/lift-subtype, coordinates, and interpolated altitude.
 #[component]
 pub fn SkiMap(
     segments: ReadSignal<Vec<AreaSegment>>,
     route_segments: ReadSignal<Vec<HighlightSegment>>,
     excluded_difficulties: ReadSignal<Vec<String>>,
     excluded_lift_types: ReadSignal<Vec<String>>,
+    popup_info: RwSignal<Option<PopupData>>,
 ) -> impl IntoView {
     // Center on Serre Chevalier ski area.
     // 44.9403, 6.5063 = approximate center of the resort.
     let center = Position::new(44.9403, 6.5063);
+
+    // Build MapEvents with a mouse_click handler.
+    // The handler reads segments from the signal, finds the nearest one,
+    // and writes the result into popup_info.
+    // Clicking empty terrain (>30 m from any segment) sets None, closing
+    // any open popup.
+    let map_events = MapEvents::new().mouse_click(move |e: MouseEvent| {
+        let ll = e.lat_lng();
+        let lat = ll.lat();
+        let lon = ll.lng();
+        let segs = segments.get_untracked();
+        let popup = nearest_segment(lat, lon, &segs);
+        popup_info.set(popup);
+    });
 
     view! {
         <MapContainer
@@ -91,6 +116,7 @@ pub fn SkiMap(
             center=center
             zoom=13.0
             set_view=true
+            events=map_events
         >
             <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

@@ -1,4 +1,4 @@
-// Rust guideline compliant 2026-02-16
+// Rust guideline compliant 2026-03-19
 use super::chains::build_chains;
 use super::data::{OsmData, haversine};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -93,6 +93,10 @@ pub struct Segment {
     pub kind: String,
     pub difficulty: String,
     pub coords: Vec<[f64; 3]>,
+    /// Number of seats per cabin/chair (aerialway:occupancy tag), lifts only.
+    pub occupancy: Option<u32>,
+    /// Ride duration in minutes (aerialway:duration tag), lifts only.
+    pub duration_min: Option<u32>,
 }
 
 /// A named ski domain element with its graph entry and exit nodes.
@@ -117,6 +121,10 @@ struct Polyline {
     difficulty: String,
     /// Ordered sequence of `[lat, lon, ele_m]` points.
     coords: Vec<[f64; 3]>,
+    /// Seats per cabin/chair (aerialway:occupancy), lifts only.
+    occupancy: Option<u32>,
+    /// Ride duration in minutes (aerialway:duration), lifts only.
+    duration_min: Option<u32>,
 }
 
 /// Group OSM ways by `group_key`, chain them, and flatten to coordinate lists.
@@ -136,6 +144,8 @@ fn build_polylines(data: &OsmData) -> Vec<Polyline> {
         let first_way = &data.ways[indices[0]];
         let kind = first_way.element_kind().to_string();
         let difficulty = first_way.difficulty().to_string();
+        let occupancy = first_way.occupancy();
+        let duration_min = first_way.duration_min();
 
         for chain in build_chains(indices, data) {
             let mut coords: Vec<[f64; 3]> = Vec::new();
@@ -177,6 +187,8 @@ fn build_polylines(data: &OsmData) -> Vec<Polyline> {
                     kind: kind.clone(),
                     difficulty: difficulty.clone(),
                     coords,
+                    occupancy,
+                    duration_min,
                 });
             }
         }
@@ -381,6 +393,8 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
                 kind: pl.kind.clone(),
                 difficulty: pl.difficulty.clone(),
                 coords: seg_coords,
+                occupancy: pl.occupancy,
+                duration_min: pl.duration_min,
             });
         }
     }
@@ -413,6 +427,8 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
                     kind: "traverse".to_string(),
                     difficulty: "-".to_string(),
                     coords: vec![nodes[i].coord, nodes[j].coord],
+                    occupancy: None,
+                    duration_min: None,
                 });
                 let id_rev = segments.len();
                 segments.push(Segment {
@@ -423,6 +439,8 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
                     kind: "traverse".to_string(),
                     difficulty: "-".to_string(),
                     coords: vec![nodes[j].coord, nodes[i].coord],
+                    occupancy: None,
+                    duration_min: None,
                 });
             }
         }
@@ -515,6 +533,8 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
                     kind: "ski-out".to_string(),
                     difficulty: "-".to_string(),
                     coords: vec![exit, target],
+                    occupancy: None,
+                    duration_min: None,
                 });
             }
         }
@@ -608,6 +628,8 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
                     kind: "ski-in".to_string(),
                     difficulty: "-".to_string(),
                     coords: vec![source, base],
+                    occupancy: None,
+                    duration_min: None,
                 });
             }
         }

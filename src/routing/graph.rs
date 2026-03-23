@@ -728,3 +728,133 @@ pub fn arrival_zone(goal_node: usize, segments: &[Segment]) -> HashSet<usize> {
     }
     zone
 }
+
+// ---------------------------------------------------------------------------
+// Unit tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Helper: build a minimal Segment for testing.
+    fn seg(id: usize, from: usize, to: usize, kind: &str) -> Segment {
+        Segment {
+            id,
+            from,
+            to,
+            name: format!("seg_{id}"),
+            kind: kind.to_string(),
+            difficulty: "-".to_string(),
+            coords: vec![[44.9, 6.5, 1800.0], [44.91, 6.5, 1700.0]],
+            occupancy: None,
+            duration_min: None,
+        }
+    }
+
+    #[test]
+    fn adjacency_from_segments_maps_from_node_to_segment_ids() {
+        // Two segments departing from node 0 and one from node 1.
+        // adj[0] must contain both segment IDs; adj[1] the third; adj[2] absent.
+        let segments = vec![
+            seg(0, 0, 1, "piste"),
+            seg(1, 0, 2, "piste"),
+            seg(2, 1, 2, "piste"),
+        ];
+        let adj = adjacency_from_segments(&segments);
+
+        let mut ids_from_0 = adj[&0].clone();
+        ids_from_0.sort_unstable();
+        assert_eq!(ids_from_0, vec![0, 1], "node 0 must have segments 0 and 1");
+        assert_eq!(adj[&1], vec![2], "node 1 must have segment 2");
+        assert!(!adj.contains_key(&2), "node 2 has no outgoing edges");
+    }
+
+    #[test]
+    fn adjacency_node_with_no_outgoing_edges_absent() {
+        // Segment 0->1: only node 0 has an outgoing edge.
+        let segments = vec![seg(0, 0, 1, "piste")];
+        let adj = adjacency_from_segments(&segments);
+        assert!(adj.contains_key(&0), "node 0 must be in adj");
+        assert!(!adj.contains_key(&1), "node 1 (sink) must not be in adj");
+    }
+
+    #[test]
+    fn arrival_zone_contains_goal_and_ski_in_sources() {
+        // Ski-in segments 2->5 and 3->5 feed goal node 5.
+        // Zone must include 5, 2, and 3.
+        let segments = vec![
+            seg(0, 2, 5, "ski-in"),
+            seg(1, 3, 5, "ski-in"),
+            seg(2, 4, 5, "piste"), // piste does not contribute to zone
+        ];
+        let zone = arrival_zone(5, &segments);
+        assert!(zone.contains(&5), "goal node must be in zone");
+        assert!(zone.contains(&2), "ski-in source 2 must be in zone");
+        assert!(zone.contains(&3), "ski-in source 3 must be in zone");
+        assert!(!zone.contains(&4), "piste source must not be in zone");
+    }
+
+    #[test]
+    fn arrival_zone_excludes_traverse_sources() {
+        // A traverse edge pointing at the goal must not widen the zone.
+        let segments = vec![
+            seg(0, 7, 5, "traverse"),
+        ];
+        let zone = arrival_zone(5, &segments);
+        assert!(zone.contains(&5), "goal must still be in zone");
+        assert!(!zone.contains(&7), "traverse source must not be in zone");
+    }
+
+    #[test]
+    fn arrival_zone_empty_segments_contains_only_goal() {
+        // No segments -> zone has exactly one member.
+        let zone = arrival_zone(3, &[]);
+        assert_eq!(zone.len(), 1, "zone must have exactly one member");
+        assert!(zone.contains(&3));
+    }
+
+    #[test]
+    fn entry_exit_piste_start_is_higher_end() {
+        // Piste polyline: head at 1800 m, tail at 1600 m.
+        // Nodes 0 and 1 placed at the head/tail coords.
+        // entry_exit must return (head_node, tail_node) = (0, 1).
+        let pl = Polyline {
+            group_key: "Test Piste".to_string(),
+            kind: "piste".to_string(),
+            difficulty: "easy".to_string(),
+            coords: vec![[44.90, 6.50, 1800.0], [44.91, 6.50, 1600.0]],
+            occupancy: None,
+            duration_min: None,
+        };
+        let nodes = vec![
+            Node { id: 0, coord: [44.90, 6.50, 1800.0] },
+            Node { id: 1, coord: [44.91, 6.50, 1600.0] },
+        ];
+        let (start, end) = entry_exit(&pl, &nodes).expect("entry_exit must return Some");
+        assert_eq!(start, 0, "piste start must be the higher node (node 0)");
+        assert_eq!(end, 1, "piste end must be the lower node (node 1)");
+    }
+
+    #[test]
+    fn entry_exit_lift_start_is_lower_end() {
+        // Lift polyline: head at 1600 m (base), tail at 1800 m (summit).
+        // Nodes: node 0 at head coords, node 1 at tail coords.
+        // entry_exit must return (head_node, tail_node) = (0, 1).
+        let pl = Polyline {
+            group_key: "Test Lift [chair_lift]".to_string(),
+            kind: "lift".to_string(),
+            difficulty: "chair_lift".to_string(),
+            coords: vec![[44.90, 6.50, 1600.0], [44.91, 6.50, 1800.0]],
+            occupancy: None,
+            duration_min: None,
+        };
+        let nodes = vec![
+            Node { id: 0, coord: [44.90, 6.50, 1600.0] },
+            Node { id: 1, coord: [44.91, 6.50, 1800.0] },
+        ];
+        let (start, end) = entry_exit(&pl, &nodes).expect("entry_exit must return Some");
+        assert_eq!(start, 0, "lift start must be the lower (base) node");
+        assert_eq!(end, 1, "lift end must be the higher (summit) node");
+    }
+}

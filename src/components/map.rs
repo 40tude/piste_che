@@ -237,3 +237,124 @@ pub fn SkiMap(
         </MapContainer>
     }
 }
+
+// ---------------------------------------------------------------------------
+// Unit tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---------------------------------------------------------------------------
+    // segment_color
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn segment_color_lift_is_amber_regardless_of_difficulty() {
+        // Lifts always render amber; difficulty is ignored.
+        assert_eq!(segment_color("lift", "easy"), "#f59e0b");
+        assert_eq!(segment_color("lift", "advanced"), "#f59e0b");
+        assert_eq!(segment_color("lift", "chair_lift"), "#f59e0b");
+    }
+
+    #[test]
+    fn segment_color_easy_piste_is_blue() {
+        assert_eq!(segment_color("piste", "easy"), "#3b82f6");
+    }
+
+    #[test]
+    fn segment_color_unknown_difficulty_is_slate() {
+        // Any difficulty not explicitly matched falls through to slate.
+        assert_eq!(segment_color("piste", "unknown_grade"), "#94a3b8");
+    }
+
+    // ---------------------------------------------------------------------------
+    // route_bearing
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn route_bearing_fewer_than_two_coords_is_zero() {
+        // Edge cases: no coords or single coord must not panic and return 0.0.
+        assert!(route_bearing(&[]).abs() < f64::EPSILON);
+        assert!(route_bearing(&[[44.9, 6.5]]).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn route_bearing_due_north_is_zero() {
+        // dlat > 0, dlon = 0 -> atan2(0, positive) = 0 degrees.
+        let bearing = route_bearing(&[[44.9, 6.5], [44.91, 6.5]]);
+        assert!(bearing.abs() < 1e-9, "due north must give 0.0, got {bearing}");
+    }
+
+    #[test]
+    fn route_bearing_due_east_is_ninety() {
+        // dlat = 0, dlon > 0 -> atan2(positive, 0) = 90 degrees.
+        let bearing = route_bearing(&[[44.9, 6.5], [44.9, 6.51]]);
+        assert!(
+            (bearing - 90.0).abs() < 1e-9,
+            "due east must give 90.0, got {bearing}"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // route_midpoint
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn route_midpoint_empty_coords_returns_none() {
+        assert!(route_midpoint(&[]).is_none());
+    }
+
+    #[test]
+    fn route_midpoint_single_coord_returns_that_coord() {
+        let coords = [[44.9, 6.5_f64]];
+        assert_eq!(route_midpoint(&coords), Some([44.9, 6.5]));
+    }
+
+    #[test]
+    fn route_midpoint_three_coords_returns_middle() {
+        // len=3; index 3/2=1 -> second element.
+        let coords = [[1.0, 1.0_f64], [2.0, 2.0], [3.0, 3.0]];
+        assert_eq!(route_midpoint(&coords), Some([2.0, 2.0]));
+    }
+
+    // ---------------------------------------------------------------------------
+    // arrow_class (sector boundary values)
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn arrow_class_bearing_zero_is_north_sector() {
+        assert_eq!(arrow_class(0.0), "route-arrow route-arrow-0");
+    }
+
+    #[test]
+    fn arrow_class_bearing_22_still_north_sector() {
+        // b=22: (22+22)/45 = 0 -> sector 0.
+        assert_eq!(arrow_class(22.0), "route-arrow route-arrow-0");
+    }
+
+    #[test]
+    fn arrow_class_bearing_23_is_northeast_sector() {
+        // b=23: (23+22)/45 = 1 -> sector 1 (45-degree class).
+        assert_eq!(arrow_class(23.0), "route-arrow route-arrow-45");
+    }
+
+    #[test]
+    fn arrow_class_bearing_67_still_northeast_sector() {
+        // b=67: (67+22)/45 = 1 -> sector 1.
+        assert_eq!(arrow_class(67.0), "route-arrow route-arrow-45");
+    }
+
+    #[test]
+    fn arrow_class_bearing_68_is_east_sector() {
+        // b=68: (68+22)/45 = 2 -> sector 2 (90-degree class).
+        assert_eq!(arrow_class(68.0), "route-arrow route-arrow-90");
+    }
+
+    #[test]
+    fn arrow_class_bearing_360_equals_bearing_zero() {
+        // 360 degrees wraps to 0 via rem_euclid.
+        assert_eq!(arrow_class(360.0), arrow_class(0.0));
+    }
+}

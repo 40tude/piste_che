@@ -250,6 +250,7 @@ pub fn haversine(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
 /// Returns the path of the most recent timestamped JSON file in `dir`,
 /// excluding `request.json`.
 pub fn find_latest_json(dir: &Path) -> Result<PathBuf> {
+
     let mut files: Vec<PathBuf> = std::fs::read_dir(dir)
         .with_context(|| format!("Reading directory {}", dir.display()))?
         .filter_map(std::result::Result::ok)
@@ -264,4 +265,153 @@ pub fn find_latest_json(dir: &Path) -> Result<PathBuf> {
 
     files.sort();
     files.pop().context("No data JSON files found in data/")
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Build a RawWay with a specific set of tags.
+    fn way_with_tags(tags: &[(&str, &str)]) -> RawWay {
+        RawWay {
+            id: 1,
+            nodes: vec![1, 2, 3],
+            tags: tags
+                .iter()
+                .map(|&(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // group_key
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn group_key_lift_with_occupancy_includes_type_and_seats() {
+        // aerialway=chair_lift + aerialway:occupancy=6 -> "Name [chair_lift 6p]"
+        let way = way_with_tags(&[
+            ("name", "Eychauda"),
+            ("aerialway", "chair_lift"),
+            ("aerialway:occupancy", "6"),
+        ]);
+        assert_eq!(way.group_key().as_deref(), Some("Eychauda [chair_lift 6p]"));
+    }
+
+    #[test]
+    fn group_key_lift_without_occupancy_omits_seat_count() {
+        // aerialway=gondola, no occupancy tag -> "Name [gondola]"
+        let way = way_with_tags(&[("name", "Grand Serre"), ("aerialway", "gondola")]);
+        assert_eq!(way.group_key().as_deref(), Some("Grand Serre [gondola]"));
+    }
+
+    #[test]
+    fn group_key_piste_is_name_only() {
+        // Piste has no aerialway tag -> key equals the piste name.
+        let way = way_with_tags(&[("name", "Casse du Boeuf"), ("piste:type", "downhill")]);
+        assert_eq!(way.group_key().as_deref(), Some("Casse du Boeuf"));
+    }
+
+    // ---------------------------------------------------------------------------
+    // duration_min
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn duration_min_plain_integer_parsed_as_minutes() {
+        // "8" -> Some(8)
+        let way = way_with_tags(&[("aerialway:duration", "8")]);
+        assert_eq!(way.duration_min(), Some(8));
+    }
+
+    #[test]
+    fn duration_min_iso_pt_minutes_only() {
+        // "PT8M" -> Some(8)
+        let way = way_with_tags(&[("aerialway:duration", "PT8M")]);
+        assert_eq!(way.duration_min(), Some(8));
+    }
+
+    #[test]
+    fn duration_min_iso_pt_hours_and_minutes() {
+        // "PT1H30M" -> Some(90)
+        let way = way_with_tags(&[("aerialway:duration", "PT1H30M")]);
+        assert_eq!(way.duration_min(), Some(90));
+    }
+
+    #[test]
+    fn duration_min_malformed_pt_returns_none() {
+        // "PT" with no H or M suffix -> None
+        let way = way_with_tags(&[("aerialway:duration", "PT")]);
+        assert_eq!(way.duration_min(), None);
+    }
+
+    #[test]
+    fn duration_min_absent_tag_returns_none() {
+        // No aerialway:duration tag -> None
+        let way = way_with_tags(&[]);
+        assert_eq!(way.duration_min(), None);
+    }
+
+    // ---------------------------------------------------------------------------
+    // element_kind
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn element_kind_goods_aerialway_is_unknown() {
+        // aerialway=goods (freight cable) must not be classified as a lift.
+        let way = way_with_tags(&[("aerialway", "goods")]);
+        assert_eq!(way.element_kind(), "?");
+    }
+
+    #[test]
+    fn element_kind_construction_aerialway_is_unknown() {
+        // aerialway=construction (not yet in service) must not be a lift.
+        let way = way_with_tags(&[("aerialway", "construction")]);
+        assert_eq!(way.element_kind(), "?");
+    }
+
+    #[test]
+    fn element_kind_chair_lift_is_lift() {
+        // aerialway=chair_lift is a passenger lift.
+        let way = way_with_tags(&[("aerialway", "chair_lift")]);
+        assert_eq!(way.element_kind(), "lift");
+    }
+
+    #[test]
+    fn element_kind_piste_downhill_is_piste() {
+        // piste:type=downhill with no aerialway tag -> "piste".
+        let way = way_with_tags(&[("piste:type", "downhill")]);
+        assert_eq!(way.element_kind(), "piste");
+    }
+
+    #[test]
+    fn element_kind_no_relevant_tags_is_unknown() {
+        // Neither aerialway nor piste:type present -> "?".
+        let way = way_with_tags(&[("highway", "path")]);
+        assert_eq!(way.element_kind(), "?");
+    }
+
+    // ---------------------------------------------------------------------------
+    // haversine
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn haversine_identical_coords_is_zero() {
+        // Distance from a point to itself must be 0.
+        let d = haversine(44.9, 6.5, 44.9, 6.5);
+        assert!(d.abs() < f64::EPSILON, "haversine of identical coords must be 0, got {d}");
+    }
+
+    #[test]
+    fn haversine_known_approx_distance_100m() {
+        // 0.0009 degrees of latitude at 44.9 N is approximately 100 m.
+        let d = haversine(44.9, 6.5, 44.9009, 6.5);
+        assert!(
+            (90.0..=110.0).contains(&d),
+            "0.0009 deg lat should be ~100 m, got {d}"
+        );
+    }
 }

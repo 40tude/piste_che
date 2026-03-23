@@ -424,6 +424,21 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
         }
     }
 
+    // Snapshot lift node sets from the directed piste/lift segments built in
+    // Step 5.  Steps 6a-6c each need these sets; computing them after Step 6a
+    // would include traverse edges in the filter (harmless today, but a hidden
+    // ordering dependency).  Snapshotting here makes the dependency explicit.
+    let lift_base_ids_snap: HashSet<usize> = segments
+        .iter()
+        .filter(|s| s.kind == "lift")
+        .map(|s| s.from) // after normalization: from = base station
+        .collect();
+    let lift_exit_ids_snap: HashSet<usize> = segments
+        .iter()
+        .filter(|s| s.kind == "lift")
+        .map(|s| s.to) // after normalization: to = summit station
+        .collect();
+
     // --- Step 6: Synthetic bidirectional traverse edges ---
     //
     // Any two nodes within TRAVERSE_RADIUS with a small altitude difference
@@ -485,16 +500,8 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
     // Excluded targets: other lift-exit nodes (avoids lift-to-lift shortcuts)
     // and lift-base nodes (skier cannot ski-out directly to a next lift base).
     {
-        let lift_base_ids: HashSet<usize> = segments
-            .iter()
-            .filter(|s| s.kind == "lift")
-            .map(|s| s.from) // after normalization: from = base
-            .collect();
-        let lift_exit_ids: HashSet<usize> = segments
-            .iter()
-            .filter(|s| s.kind == "lift")
-            .map(|s| s.to) // after normalization: to = summit
-            .collect();
+        let lift_base_ids = &lift_base_ids_snap;
+        let lift_exit_ids = &lift_exit_ids_snap;
 
         // Map each node to the piste names that use it (from/to of piste segments).
         let mut node_piste_names: HashMap<usize, Vec<String>> = HashMap::new();
@@ -580,16 +587,8 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
     // Excluded sources: lift-exit and lift-base nodes to prevent lift-to-lift
     // and base-to-base shortcuts.
     {
-        let lift_base_ids: HashSet<usize> = segments
-            .iter()
-            .filter(|s| s.kind == "lift")
-            .map(|s| s.from) // after normalization: from = base
-            .collect();
-        let lift_exit_ids: HashSet<usize> = segments
-            .iter()
-            .filter(|s| s.kind == "lift")
-            .map(|s| s.to) // after normalization: to = summit
-            .collect();
+        let lift_base_ids = &lift_base_ids_snap;
+        let lift_exit_ids = &lift_exit_ids_snap;
 
         // Map each node to the piste names that use it (from/to of piste segments).
         let mut node_piste_names: HashMap<usize, Vec<String>> = HashMap::new();

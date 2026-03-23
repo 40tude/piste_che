@@ -106,8 +106,13 @@ async fn compute_route_valid_request() {
     );
 }
 
-/// POST /api/compute_route with same start and end must return 200 with
-/// `error` set to a non-empty string.
+/// POST /api/compute_route with same start and end must return 200.
+///
+/// All selectable elements are lifts (FR-004). For a lift, same start/end
+/// triggers the circuit case (summit -> piste -> base). Two outcomes are valid:
+///   (a) Circuit succeeds: `error` is null, `steps` is non-empty.
+///   (b) No route found:   `error` is non-empty, `steps` is empty.
+/// Unacceptable: `error` is null AND `steps` is empty.
 #[tokio::test]
 async fn compute_route_same_start_end() {
     let Some((start, _)) = fetch_selectable_pair().await else {
@@ -135,9 +140,10 @@ async fn compute_route_same_start_end() {
     let body: serde_json::Value = resp.json().await.expect("response body is not valid JSON");
 
     let error = body["error"].as_str().unwrap_or("");
+    let steps = body["steps"].as_array().map_or(0, Vec::len);
     assert!(
-        !error.is_empty(),
-        "same start/end must produce a non-empty 'error' field; got: {body}"
+        !error.is_empty() || steps > 0,
+        "same-lift start/end must yield a circuit (non-empty steps) or a 'no route' error; got: {body}"
     );
 }
 

@@ -1,4 +1,6 @@
 // Rust guideline compliant 2026-02-16
+use std::collections::VecDeque;
+
 use super::data::OsmData;
 
 // ---------------------------------------------------------------------------
@@ -27,11 +29,14 @@ pub struct Seg {
 /// unvisited way.  A way is reversed when its last node matches the current
 /// chain endpoint rather than its first.
 pub fn build_chains(way_indices: &[usize], data: &OsmData) -> Vec<Vec<Seg>> {
-    let mut remaining: Vec<usize> = way_indices.to_vec();
+    // Use VecDeque so pop_front() is O(1) instead of the O(n) Vec::remove(0).
+    let mut remaining: VecDeque<usize> = way_indices.iter().copied().collect();
     let mut chains: Vec<Vec<Seg>> = Vec::new();
 
     while !remaining.is_empty() {
-        let first_idx = remaining.remove(0);
+        let first_idx = remaining
+            .pop_front()
+            .expect("remaining is non-empty per loop condition");
         let first_way = &data.ways[first_idx];
         let head = first_way.nodes.first().copied().unwrap_or(0);
         let tail = first_way.nodes.last().copied().unwrap_or(0);
@@ -48,7 +53,9 @@ pub fn build_chains(way_indices: &[usize], data: &OsmData) -> Vec<Vec<Seg>> {
                     || w.nodes.last().copied().unwrap_or(0) == chain_tail
             });
             if let Some(pos) = extend_tail {
-                let idx = remaining.remove(pos);
+                let idx = remaining
+                    .remove(pos)
+                    .expect("pos came from iter().position(), so it is valid");
                 let w = &data.ways[idx];
                 let rev = w.nodes.first().copied().unwrap_or(0) != chain_tail;
                 let (h, t) = if rev {
@@ -67,7 +74,9 @@ pub fn build_chains(way_indices: &[usize], data: &OsmData) -> Vec<Vec<Seg>> {
                     || w.nodes.first().copied().unwrap_or(0) == chain_head
             });
             if let Some(pos) = extend_head {
-                let idx = remaining.remove(pos);
+                let idx = remaining
+                    .remove(pos)
+                    .expect("pos came from iter().position(), so it is valid");
                 let w = &data.ways[idx];
                 let rev = w.nodes.last().copied().unwrap_or(0) != chain_head;
                 let (h, t) = if rev {

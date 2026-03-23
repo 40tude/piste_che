@@ -241,7 +241,12 @@ pub async fn compute_route(
     // End element is always the last step (unless already appended).
     // Arrivals are lift departure stations -- the user does not take that lift,
     // so do not highlight it on the map.
-    if steps.last().map(|s| s.name.as_str()) != Some(end_el.name.as_str()) {
+    // Compare (name, kind) not name alone: two elements can share a display
+    // name while having different kinds (e.g., "Eychauda" piste vs lift).
+    let last_matches_end = steps.last().is_some_and(|s| {
+        s.name.as_str() == end_el.name.as_str() && s.kind.as_str() == end_el.kind.as_str()
+    });
+    if !last_matches_end {
         let end_dist = element_distance(end_el, &state.segments);
         steps.push(RouteStep {
             name: end_el.name.clone(),

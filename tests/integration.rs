@@ -141,7 +141,11 @@ async fn compute_route_same_start_end() {
     );
 }
 
-/// POST /api/compute_route with unknown element names must return 500 / error.
+/// POST /api/compute_route with unknown element names must return 500
+/// (Leptos ServerFnError) or a 200 with a non-empty `error` field.
+///
+/// Both outcomes signal that the server correctly rejected the request;
+/// the exact mechanism depends on how the Leptos version encodes errors.
 #[tokio::test]
 async fn compute_route_unknown_element() {
     let payload = serde_json::json!({
@@ -160,10 +164,20 @@ async fn compute_route_unknown_element() {
         .await
         .expect("POST /api/compute_route failed");
 
-    // Leptos server functions return 500 on ServerFnError.
-    assert!(
-        resp.status().is_server_error() || resp.status().is_success(),
-        "response status must be a valid HTTP code; got {}",
-        resp.status()
-    );
+    let status = resp.status();
+    if status.is_success() {
+        // 200: the error must be encoded in the response body.
+        let body: serde_json::Value =
+            resp.json().await.expect("response body is not valid JSON");
+        let error_msg = body["error"].as_str().unwrap_or("");
+        assert!(
+            !error_msg.is_empty(),
+            "200 response for unknown element must have non-empty 'error' field; got: {body}"
+        );
+    } else {
+        assert!(
+            status.is_server_error(),
+            "expected 500 or 200+error for unknown element; got {status}"
+        );
+    }
 }

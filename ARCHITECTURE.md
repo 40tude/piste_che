@@ -1,6 +1,6 @@
 # ARCHITECTURE.md
 
-Version 0.1.0 | Commit 3330a1d | 2026-03-19
+Version 0.1.0 | Commit 7dd61a8 | 2026-03-23
 
 ---
 
@@ -28,7 +28,7 @@ See `resort_generator` sub workspace.
 
 Current file: `data/serre_chevalier_20260319_221219.json`.
 
-`src/routing/data.rs` exposes `find_latest_json()` to auto-select the most recent timestamped file in `data/`, but `src/main.rs` currently hardcodes the path. Future work: wire `find_latest_json()` in main.rs and integrate both CLIs as Cargo sub-workspaces.
+`src/routing/data.rs` exposes `find_latest_json()` to auto-select the most recent timestamped file in `data/`. `src/main.rs` calls it at startup -- no manual path update is needed after a data refresh. Future work: integrate `get_data` and `get_elevation` CLIs as Cargo sub-workspaces.
 
 ---
 
@@ -196,7 +196,8 @@ piste_che/
 |   |   |-- filters.rs          # difficulty/lift-type filter panel
 |   |   |-- selector.rs         # start/end dropdown selectors
 |   |   |-- itinerary.rs        # step-by-step itinerary panel
-|   |   `-- mode_tabs.rs        # routing mode tab bar (Short/Sport/Safe)
+|   |   |-- mode_tabs.rs        # routing mode tab bar (Short/Sport/Safe)
+|   |   `-- segment_popup.rs    # click-to-inspect popup (name, kind, length, altitude)
 |   |-- server/
 |   |   |-- mod.rs              # AppState definition
 |   |   `-- api.rs              # get_area + compute_route server functions
@@ -260,10 +261,9 @@ Then open `http://localhost:3000`.
 ## 8. Future Work
 
 - Sport and Safe routing modes (mode tabs exist; Dijkstra weights to implement)
-- Wire `find_latest_json()` in `main.rs` for automatic data file selection
 - Integrate `get_data` + `get_elevation` as Cargo sub-workspaces
 - CI/CD automation for WASM build + Heroku deploy
-- Map interactivity: click-to-select elements, detail popovers
+- `Option<f32>` elevation propagation through pipeline (currently 0.0 sentinel for missing data)
 
 ---
 

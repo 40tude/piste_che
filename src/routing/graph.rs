@@ -43,8 +43,12 @@ const CROSSING_RADIUS: f64 = 50.0;
 const CROSSING_MAX_ALT: f64 = 5.0;
 
 /// Radius for directed lift-exit to piste "ski-out" edges.
-/// Must be >= `SPLIT_RADIUS` (300 m) so every split node triggered by a
-/// lift exit is reachable from that exit via a ski-out edge.
+///
+/// Bridges the immediate gap between a lift summit station and the piste
+/// nodes that depart from that summit.  Kept tight (100 m) to prevent
+/// Dijkstra from treating a ski-out edge as a free long-distance shortcut.
+/// Split nodes further than 100 m from the lift exit are still reachable
+/// via regular piste segments or traverse edges.
 const SKI_OUT_RADIUS: f64 = 100.0;
 
 /// Max descent (lift-exit elevation minus target elevation) for a ski-out edge.
@@ -58,7 +62,9 @@ const SKI_OUT_MAX_ALT: f64 = 10.0;
 ///   ski-in edge toward that base, bridging approach gaps > `TRAVERSE_RADIUS`.
 /// - `arrival_zone`: any node within this radius of the destination counts as arrived.
 ///
-/// Must be >= `SPLIT_RADIUS` (300 m) by the same argument as `SKI_OUT_RADIUS`.
+/// Kept tight (100 m) so that ski-in edges only bridge the final approach
+/// to the boarding station, not arbitrary cross-mountain shortcuts.
+/// Piste nodes further away reach the lift base via regular piste segments.
 pub const SKI_IN_RADIUS: f64 = 100.0;
 
 /// Max altitude gain (metres) from a source node to a lift base for a ski-in edge,

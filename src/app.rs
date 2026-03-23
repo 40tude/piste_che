@@ -33,6 +33,7 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <Link rel="icon" type_="image/png" href="/favicon.png"/>
         <Stylesheet id="leptos" href="/pkg/piste_che.css"/>
         <link rel="stylesheet" href="/leaflet.css"/>
         <Router>

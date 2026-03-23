@@ -359,6 +359,12 @@ body {
     .sidebar-handle {
         display: block;
     }
+
+    .filter-panel {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 var(--gap);
+    }
 }
 
 /* ---- Segment popup (map click) ---- */

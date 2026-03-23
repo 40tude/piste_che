@@ -125,13 +125,21 @@ pub async fn compute_route(
     }
 
     // Same start/end guard.
+    // Exception: if the element is a lift, allow routing from summit back to
+    // base (circuit: ride up, ski down, return to departure station).
     if start == end {
-        return Ok(RouteResponse {
-            steps: vec![],
-            total_distance_m: 0,
-            highlight_segments: vec![],
-            error: Some("Start and end points are the same".to_string()),
-        });
+        let is_lift = state
+            .route_elements
+            .iter()
+            .any(|e| e.name == start && e.kind == "lift");
+        if !is_lift {
+            return Ok(RouteResponse {
+                steps: vec![],
+                total_distance_m: 0,
+                highlight_segments: vec![],
+                error: Some("Start and end points are the same".to_string()),
+            });
+        }
     }
 
     // Resolve named elements.

@@ -1,4 +1,4 @@
-// Rust guideline compliant 2026-03-19
+// Rust guideline compliant 2026-03-23
 use super::chains::build_chains;
 use super::data::{OsmData, haversine};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -68,6 +68,15 @@ pub const SKI_IN_RADIUS: f64 = 100.0;
 /// the skier's current position; GPS noise allows 10 m in the other direction
 /// (see Step 6c altitude check).
 pub const SKI_IN_MAX_ALT: f64 = 10.0;
+
+/// Max descent (metres) from a piste source node to a lift base for a ski-in edge.
+///
+/// A lift base station can sit slightly below the end of the approach piste
+/// (the skier glides down a short ramp to board).  25 m covers real terrain
+/// gaps seen in Serre Chevalier data (e.g. Vauban end at 1219 m -> Prorel 1
+/// base at 1204 m: 15.5 m descent) while staying tighter than SPLIT_MAX_ALT
+/// so that distant downhill nodes are never bridged by a ski-in edge.
+pub const SKI_IN_MAX_DESCENT: f64 = 25.0;
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -600,7 +609,7 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
                 let ascent = base[2] - source[2]; // positive = base is above source
                 if d > 1.0
                     && d < SKI_IN_RADIUS
-                    && ascent > -10.0 // allow <=10 m downhill (GPS noise)
+                    && ascent > -SKI_IN_MAX_DESCENT // allow short descent to boarding area
                     && ascent < SKI_IN_MAX_ALT
                 {
                     if let Some(piste_names) = node_piste_names.get(&node_id) {

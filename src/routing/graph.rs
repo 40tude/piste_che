@@ -387,9 +387,19 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
             }
         }
 
-        // Sort by position, then collapse adjacent duplicates.
+        // Sort by coord position, then deduplicate by node ID keeping the
+        // first (lowest-ci) occurrence of each node.
+        //
+        // `dedup_by_key` only removes *consecutive* duplicates; if the same
+        // node appears at ci=10 and ci=25 (non-adjacent after sort) both
+        // entries survive, creating a topology loop through that node.
+        // The retain+HashSet approach removes ALL duplicate node IDs globally,
+        // not just adjacent ones, regardless of how far apart they are.
         boundaries.sort_by_key(|&(ci, _)| ci);
-        boundaries.dedup_by_key(|b| b.1);
+        {
+            let mut seen = HashSet::new();
+            boundaries.retain(|&(_, nid)| seen.insert(nid));
+        }
 
         // One segment per consecutive node pair.
         for w in boundaries.windows(2) {

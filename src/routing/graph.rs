@@ -672,6 +672,15 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
     }
     let route_elements: Vec<RouteElement> = seen.into_values().collect();
 
+    // Invariant required by Dijkstra: node IDs must equal their Vec index so
+    // that dist[node_id] and prev[node_id] are valid direct-index accesses.
+    // This holds by construction (IDs are assigned as `nodes.len()` before
+    // push), but an explicit check catches any future regression immediately.
+    debug_assert!(
+        nodes.iter().enumerate().all(|(i, n)| n.id == i),
+        "node IDs are not contiguous: Dijkstra dist[] indexing would be wrong"
+    );
+
     (nodes, segments, route_elements)
 }
 

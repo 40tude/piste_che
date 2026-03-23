@@ -28,6 +28,18 @@ pub fn dijkstra(
     excluded_difficulties: &[&str],
     excluded_lift_types: &[&str],
 ) -> Option<Vec<usize>> {
+    // dist[] and prev[] are indexed by node ID.  This is safe only when IDs
+    // are dense (0..n_nodes).  build_graph guarantees this invariant; the
+    // assert here catches any caller that passes a stale or mis-counted value.
+    debug_assert!(
+        start < n_nodes,
+        "start node {start} is out of range for n_nodes={n_nodes}"
+    );
+    debug_assert!(
+        goal_zone.iter().all(|&g| g < n_nodes),
+        "goal_zone contains a node ID >= n_nodes={n_nodes}"
+    );
+
     let mut dist = vec![u32::MAX; n_nodes];
     let mut prev: Vec<Option<usize>> = vec![None; n_nodes]; // segment ID that reached each node
     let mut actual_goal: Option<usize> = None;

@@ -182,6 +182,12 @@ fn build_polylines(data: &OsmData) -> Vec<Polyline> {
             // Normalize direction using elevation so all segments are correctly
             // directed: lifts run base->summit, pistes run summit->base.
             // Skip normalization when both endpoints lack elevation data.
+            //
+            // Elevation sentinel: nodes without elevation are stored as 0.0
+            // (the default when `ele` is absent in the JSON, see OsmData::load).
+            // Treating 0.0 as "missing" is valid for Serre Chevalier (all
+            // elements are above 1000 m), but would misclassify sea-level
+            // elements if this code were reused for a coastal resort.
             if let (Some(&first), Some(&last)) = (coords.first(), coords.last()) {
                 let both_missing = first[2] == 0.0 && last[2] == 0.0;
                 if !both_missing {

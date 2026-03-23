@@ -5,7 +5,9 @@
 .claude/
 .git/
 .specify/
+assets/
 docs/
+resort_generator/
 specs/
 tests/
 .gitignore

@@ -229,6 +229,10 @@ impl RawWay {
 /// Haversine distance between two WGS-84 coordinates, in metres.
 ///
 /// Uses the mean spherical Earth radius (6 371 000 m).
+///
+/// NOTE: identical implementation lives in `src/components/segment_popup.rs`
+/// (WASM build cannot import `routing::data` which is `ssr`-only).
+/// If either copy changes, update both.
 pub fn haversine(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     // Earth mean spherical radius in metres (WGS-84 approximation)
     const R: f64 = 6_371_000.0;

@@ -40,6 +40,10 @@ pub struct PopupData {
 /// Haversine distance between two WGS-84 points, in metres.
 ///
 /// Uses the mean spherical Earth radius (6 371 000 m).
+///
+/// NOTE: identical implementation lives in `src/routing/data.rs`.
+/// That module is `ssr`-only so it cannot be imported from WASM.
+/// If either copy changes, update both.
 fn haversine(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     const R: f64 = 6_371_000.0;
     let dlat = (lat2 - lat1).to_radians();

@@ -222,6 +222,12 @@ pub async fn compute_route(
         } else {
             // Same-named piste split into sub-segments at junctions: accumulate
             // distance and extend the highlight rather than discarding sub-segment data.
+            // steps and highlight_segments are always in sync: a new name always
+            // pushes to both, so they can never be empty here.
+            debug_assert!(
+                !steps.is_empty() && !highlight_segments.is_empty(),
+                "steps and highlight_segments must be non-empty before accumulating same-name segment"
+            );
             #[expect(
                 clippy::cast_possible_truncation,
                 clippy::cast_sign_loss,

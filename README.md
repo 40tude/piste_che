@@ -1,8 +1,8 @@
 # piste_che
 
 > **Warning:** The `.cargo/` folder contains Windows-specific configuration (custom `target-dir` for OneDrive, CPU flags). Delete or rename before building:
-> ```bash
-> mv .cargo .cargo.bak
+> ```powershell
+> Rename-Item .cargo .cargo.bak
 > ```
 > More information on this [page](https://www.40tude.fr/docs/06_programmation/rust/005_my_rust_setup_win11/my_rust_setup_win11.html#onedrive).
 
@@ -10,92 +10,126 @@
 
 ## Description
 
-* The “Piste Che” app creates itineraries for skiers in the Serre Chevalier ski area.
-* Made with Rust, Claude Code and Spec Kit
+Ski itinerary planner for the Serre Chevalier ski area (French Alps). Full-stack Rust: SSR server (Axum) + WASM client (Leptos hydration). Built with Claude Code and Spec Kit.
 
 <figure style="text-align: center;">
 <img src="./docs/img00.webp" alt="" width="900" loading="lazy"/>
 <figcaption>...</figcaption>
 </figure>
 
-At the time of writing, a version is available on [Heroku](https://piste-che-524529397e99.herokuapp.com/). Works fine on cell phones. It is hosted for free on Heroku and may be slow to startup.
+A live version is available on [Heroku](https://piste-che-524529397e99.herokuapp.com/). Free tier -- may be slow to start.
+
+
+## Features
+
+- Interactive Leaflet map with all pistes and lifts
+- Difficulty and lift-type filter panel
+- Dijkstra shortest-route between any two lifts (Short mode)
+- Step-by-step itinerary panel with distances
+- Segment popup: click any piste or lift for name, kind, length, and altitude
+- Mobile-responsive layout with slide-up sidebar
+
+
+## Architecture
+
+| Layer | Technology |
+|---|---|
+| UI framework | Leptos 0.7 (SSR + WASM hydration) |
+| Web server | Axum 0.7 + Tokio (single-thread) |
+| Map | leptos-leaflet 0.9 (Leaflet.js wrapper) |
+| Serialization | serde + serde_json |
+| Allocator | mimalloc |
+| Build | cargo-leptos 0.3.x |
+
+Key design points:
+- `src/models.rs` -- 8 shared DTOs compiled for both server and WASM; zero duplication
+- `src/routing/` -- SSR-only: OSM data load, 7-step `build_graph()`, Dijkstra
+- `src/server/api.rs` -- `GET /api/get_area` (Axum) + `POST /api/compute_route` (Leptos server fn)
+- Data auto-selected at startup via `find_latest_json("data/")` (most recent timestamped JSON)
+- `ssr` and `hydrate` feature flags gate routing/server code out of the WASM bundle
+
+See `ARCHITECTURE.md` for full design details, graph pipeline, and Leptos/WASM gotchas.
 
 
 ## Prerequisites
-- Rust stable 1.85+ (edition 2024 support)
-- Make sure Perl is available (mandatory to compile `leptos`)
-    - `winget install StrawberryPerl.StrawberryPerl`
-- cargo-leptos:
-    - `cargo install cargo-leptos`
-    - Feel free to grab a green tea, as this will take a few minutes to complete.
-- Check with `rustup target list --installed | Select-String wasm`
-    - If `wasm32-unknown-unknown` is **NOT** visible then type `rustup target add wasm32-unknown-unknown`
-    - To explain what this is. Rust normally compiles for our PC (x86-64 Windows). `wasm32-unknown-unknown` is a different compilation target. It produces WebAssembly, the binary format that the browser can execute. `cargo-leptos` needs it to compile the client-side part of the app.
+
+- Rust stable 1.85+ (edition 2024)
+- Perl (required to compile `leptos`): `winget install StrawberryPerl.StrawberryPerl`
+- cargo-leptos: `cargo install cargo-leptos`
+- WASM target: `rustup target add wasm32-unknown-unknown`
 
 
-
-## Build Local
+## Build
 
 ```powershell
-# Development (watch mode with hot-reload)
+# One-time build (outputs server binary + site/ bundle)
 cargo leptos build
 
-# Release build (single binary + WASM bundle)
+# Release build
 cargo leptos build --release
 ```
 
 
-## Run Local
+## Run
 
 ```powershell
-# Default port (from Cargo.toml site-addr)
+# Watch mode with hot-reload (default port 3000)
 cargo leptos watch
 
-# Custom port via environment variable (takes precedence)
+# Custom port
 $env:PORT='3000'; cargo leptos watch
 ```
 
-Then open browser at `http://localhost:3000`.
+Then open `http://localhost:3000`.
 
 
+## Test
 
-## Test Local
+### Unit tests (no server required)
 
-### Integration tests only
-* **ATTENTION:** requires server running
-* 1 - Start the server with: `cargo leptos watch`
-* 2 - Then, in a second terminal, run: `cargo test --test integration`
+```powershell
+cargo test --lib
+```
 
+63 unit tests covering the routing pipeline (`graph`, `chains`, `dijkstra`, `data`) and UI geometry helpers (`segment_popup`, `map`).
 
+### Integration tests (server must be running)
 
-### All tests (unit + integration)
-* **ATTENTION:** requires server running
-* 1 - Start the server with: `cargo leptos watch`
-* 2 - Then run: `cargo test --test integration`
+```powershell
+# Terminal 1
+cargo leptos watch
 
+# Terminal 2
+cargo test --test integration
+```
 
+7 integration tests covering API shape, routing modes, filter behavior, and coordinate structure.
 
+### All tests
+
+```powershell
+# With server running in another terminal:
+cargo test
+```
 
 
 ## Deploy Heroku
+
 Heroku does NOT run `cargo leptos build`. The `site/` folder must be created, committed and pushed.
 
-
 ```powershell
-# Fill the `site/` folder with
+# Fill the `site/` folder
 cargo leptos build --release
 
-# Commit using VSCode or using the commands below
+# Commit
 git add site/
 git commit -m "deploy: rebuild assets"
 
-# Push on Heroku
-# This take some time on the last line (Verifying deploy... done.)
+# Push -- buildpack recompiles server binary for Linux; WASM bundle comes from site/
 git push heroku main
 ```
 
-Above, `cargo leptos build --release` generates (in `site/pkg/`):
-
+`cargo leptos build --release` generates:
 
 ```txt
 site/pkg/
@@ -107,6 +141,50 @@ site/pkg/
 ```
 
 
+### Developing and testing on Heroku
+
+1. **Development on the branch**
+
+```powershell
+git checkout -b feature-xyz
+# ... code, commits ...
+```
+
+2. **Local build + test**
+
+```powershell
+cargo leptos build --release
+# test locally
+```
+
+3. **Deploy to Heroku for testing**
+
+```powershell
+cargo leptos build --release
+git add site/
+git commit -m "deploy: rebuild assets"
+git push heroku feature-xyz:main       # <-----THIS ONE IS IMPORTANT local:remote
+```
+
+4. **Verification on Heroku**
+* Test on the live server
+* If there is a bug: fix it on the branch, then redo step 3
+
+5. **Merge into main (once satisfied)**
+
+```powershell
+git checkout main
+git merge feature-xyz
+git push origin main          # GitHub/remote
+git push heroku main          # re-deploy from clean main
+```
+
+6. **Cleanup**
+
+```powershell
+git branch -d feature-xyz
+```
+
 
 **Known cargo-leptos 0.3.x quirk:** the generated JS requests `piste_che_bg.wasm`
 but the actual file on disk is `piste_che.wasm`. The server aliases the two names
@@ -117,15 +195,11 @@ Only `site/` needs to be committed. Heroku's Rust buildpack recompiles the
 server binary for Linux. The local Windows binary in `target/` is irrelevant.
 
 
-
-
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details
 
 
 ## Contributing
-This project is developed for personal and educational purposes. Feel free to explore and use it to enhance your own learning.
 
-Given the nature of the project, external contributions are not actively sought nor encouraged. However, constructive feedback aimed at improving the project (in terms of speed, accuracy, comprehensiveness, etc.) is welcome. Please note that this project is being created as a hobby and is unlikely to be maintained once my initial goal has been achieved.
+Personal/educational project. External contributions are not actively sought. Constructive feedback on performance, accuracy, or completeness is welcome.

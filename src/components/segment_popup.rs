@@ -40,6 +40,10 @@ pub struct PopupData {
 /// Haversine distance between two WGS-84 points, in metres.
 ///
 /// Uses the mean spherical Earth radius (6 371 000 m).
+///
+/// NOTE: identical implementation lives in `src/routing/data.rs`.
+/// That module is `ssr`-only so it cannot be imported from WASM.
+/// If either copy changes, update both.
 fn haversine(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     const R: f64 = 6_371_000.0;
     let dlat = (lat2 - lat1).to_radians();
@@ -267,5 +271,131 @@ pub fn SegmentPopup(info: RwSignal<Option<PopupData>>) -> impl IntoView {
                 }
             })
         }}
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Build a minimal AreaSegment for testing nearest_segment.
+    fn make_area_segment(kind: &str, coords: Vec<[f64; 3]>) -> AreaSegment {
+        AreaSegment {
+            id: 0,
+            name: "Test".to_string(),
+            kind: kind.to_string(),
+            difficulty: "easy".to_string(),
+            occupancy: None,
+            duration_min: None,
+            coords,
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // project_point_onto_segment
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn project_point_at_segment_midpoint_gives_t_half() {
+        // P is exactly halfway between A and B along a horizontal segment.
+        // A=(0,0), B=(0,0.02); midpoint P=(0,0.01) must give t=0.5.
+        let (_, t) = project_point_onto_segment(0.0, 0.01, 0.0, 0.0, 0.0, 0.02);
+        assert!(
+            (t - 0.5).abs() < 1e-9,
+            "midpoint must give t=0.5, got {t}"
+        );
+    }
+
+    #[test]
+    fn project_point_before_segment_start_clamped_to_zero() {
+        // P is behind A (negative projection) -> t must be clamped to 0.
+        let (_, t) = project_point_onto_segment(0.0, -0.01, 0.0, 0.0, 0.0, 0.02);
+        assert!(
+            t.abs() < 1e-9,
+            "point before A must give t=0.0, got {t}"
+        );
+    }
+
+    #[test]
+    fn project_point_past_segment_end_clamped_to_one() {
+        // P is past B -> t must be clamped to 1.0.
+        let (_, t) = project_point_onto_segment(0.0, 0.03, 0.0, 0.0, 0.0, 0.02);
+        assert!(
+            (t - 1.0).abs() < 1e-9,
+            "point past B must give t=1.0, got {t}"
+        );
+    }
+
+    #[test]
+    fn project_onto_degenerate_zero_length_segment_returns_t_zero() {
+        // Degenerate segment where A == B; must not panic and must return t=0.
+        let (_, t) = project_point_onto_segment(0.0, 0.01, 0.0, 0.0, 0.0, 0.0);
+        assert!(
+            t.abs() < 1e-9,
+            "degenerate segment must give t=0.0, got {t}"
+        );
+    }
+
+    // ---------------------------------------------------------------------------
+    // nearest_segment
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn nearest_segment_within_threshold_returns_some() {
+        // Segment from (0,0) to (0,0.001); click at the midpoint (0, 0.0005)
+        // is exactly on the segment (0 m away) -> must return Some.
+        let seg = make_area_segment("piste", vec![
+            [0.0, 0.0, 1000.0],
+            [0.0, 0.001, 2000.0],
+        ]);
+        let result = nearest_segment(0.0, 0.0005, &[seg]);
+        assert!(result.is_some(), "click on segment must return Some(PopupData)");
+    }
+
+    #[test]
+    fn nearest_segment_beyond_threshold_returns_none() {
+        // Segment near origin; click 1 full degree away (~111 km) -> None.
+        let seg = make_area_segment("piste", vec![
+            [0.0, 0.0, 1000.0],
+            [0.0, 0.001, 1100.0],
+        ]);
+        let result = nearest_segment(1.0, 0.0, &[seg]);
+        assert!(result.is_none(), "click far from segment must return None");
+    }
+
+    #[test]
+    fn nearest_segment_empty_segment_list_returns_none() {
+        // No segments -> None regardless of click position.
+        let result = nearest_segment(0.0, 0.0, &[]);
+        assert!(result.is_none(), "empty segment list must return None");
+    }
+
+    #[test]
+    fn nearest_segment_single_coord_segment_is_skipped() {
+        // A segment with fewer than 2 coords is skipped; result is None.
+        let seg = make_area_segment("piste", vec![[0.0, 0.0, 1000.0]]);
+        let result = nearest_segment(0.0, 0.0, &[seg]);
+        assert!(result.is_none(), "single-coord segment must be skipped");
+    }
+
+    #[test]
+    fn nearest_segment_altitude_interpolated_at_midpoint() {
+        // Segment A=[0,0,1000] to B=[0,0.01,2000].
+        // Click at (0, 0.005) -> t=0.5 -> alt = 1000 + 0.5*1000 = 1500.
+        let seg = make_area_segment("piste", vec![
+            [0.0, 0.0, 1000.0],
+            [0.0, 0.01, 2000.0],
+        ]);
+        let result = nearest_segment(0.0, 0.005, &[seg]);
+        let popup = result.expect("click on segment midpoint must return Some");
+        assert!(
+            (popup.alt_m - 1500.0).abs() < 1.0,
+            "altitude at midpoint must be ~1500 m, got {}",
+            popup.alt_m
+        );
     }
 }

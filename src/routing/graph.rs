@@ -43,8 +43,12 @@ const CROSSING_RADIUS: f64 = 50.0;
 const CROSSING_MAX_ALT: f64 = 5.0;
 
 /// Radius for directed lift-exit to piste "ski-out" edges.
-/// Must be >= `SPLIT_RADIUS` (300 m) so every split node triggered by a
-/// lift exit is reachable from that exit via a ski-out edge.
+///
+/// Bridges the immediate gap between a lift summit station and the piste
+/// nodes that depart from that summit.  Kept tight (100 m) to prevent
+/// Dijkstra from treating a ski-out edge as a free long-distance shortcut.
+/// Split nodes further than 100 m from the lift exit are still reachable
+/// via regular piste segments or traverse edges.
 const SKI_OUT_RADIUS: f64 = 100.0;
 
 /// Max descent (lift-exit elevation minus target elevation) for a ski-out edge.
@@ -58,7 +62,9 @@ const SKI_OUT_MAX_ALT: f64 = 10.0;
 ///   ski-in edge toward that base, bridging approach gaps > `TRAVERSE_RADIUS`.
 /// - `arrival_zone`: any node within this radius of the destination counts as arrived.
 ///
-/// Must be >= `SPLIT_RADIUS` (300 m) by the same argument as `SKI_OUT_RADIUS`.
+/// Kept tight (100 m) so that ski-in edges only bridge the final approach
+/// to the boarding station, not arbitrary cross-mountain shortcuts.
+/// Piste nodes further away reach the lift base via regular piste segments.
 pub const SKI_IN_RADIUS: f64 = 100.0;
 
 /// Max altitude gain (metres) from a source node to a lift base for a ski-in edge,
@@ -176,6 +182,12 @@ fn build_polylines(data: &OsmData) -> Vec<Polyline> {
             // Normalize direction using elevation so all segments are correctly
             // directed: lifts run base->summit, pistes run summit->base.
             // Skip normalization when both endpoints lack elevation data.
+            //
+            // Elevation sentinel: nodes without elevation are stored as 0.0
+            // (the default when `ele` is absent in the JSON, see OsmData::load).
+            // Treating 0.0 as "missing" is valid for Serre Chevalier (all
+            // elements are above 1000 m), but would misclassify sea-level
+            // elements if this code were reused for a coastal resort.
             if let (Some(&first), Some(&last)) = (coords.first(), coords.last()) {
                 let both_missing = first[2] == 0.0 && last[2] == 0.0;
                 if !both_missing {
@@ -381,9 +393,19 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
             }
         }
 
-        // Sort by position, then collapse adjacent duplicates.
+        // Sort by coord position, then deduplicate by node ID keeping the
+        // first (lowest-ci) occurrence of each node.
+        //
+        // `dedup_by_key` only removes *consecutive* duplicates; if the same
+        // node appears at ci=10 and ci=25 (non-adjacent after sort) both
+        // entries survive, creating a topology loop through that node.
+        // The retain+HashSet approach removes ALL duplicate node IDs globally,
+        // not just adjacent ones, regardless of how far apart they are.
         boundaries.sort_by_key(|&(ci, _)| ci);
-        boundaries.dedup_by_key(|b| b.1);
+        {
+            let mut seen = HashSet::new();
+            boundaries.retain(|&(_, nid)| seen.insert(nid));
+        }
 
         // One segment per consecutive node pair.
         for w in boundaries.windows(2) {
@@ -407,6 +429,21 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
             });
         }
     }
+
+    // Snapshot lift node sets from the directed piste/lift segments built in
+    // Step 5.  Steps 6a-6c each need these sets; computing them after Step 6a
+    // would include traverse edges in the filter (harmless today, but a hidden
+    // ordering dependency).  Snapshotting here makes the dependency explicit.
+    let lift_base_ids_snap: HashSet<usize> = segments
+        .iter()
+        .filter(|s| s.kind == "lift")
+        .map(|s| s.from) // after normalization: from = base station
+        .collect();
+    let lift_exit_ids_snap: HashSet<usize> = segments
+        .iter()
+        .filter(|s| s.kind == "lift")
+        .map(|s| s.to) // after normalization: to = summit station
+        .collect();
 
     // --- Step 6: Synthetic bidirectional traverse edges ---
     //
@@ -469,16 +506,8 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
     // Excluded targets: other lift-exit nodes (avoids lift-to-lift shortcuts)
     // and lift-base nodes (skier cannot ski-out directly to a next lift base).
     {
-        let lift_base_ids: HashSet<usize> = segments
-            .iter()
-            .filter(|s| s.kind == "lift")
-            .map(|s| s.from) // after normalization: from = base
-            .collect();
-        let lift_exit_ids: HashSet<usize> = segments
-            .iter()
-            .filter(|s| s.kind == "lift")
-            .map(|s| s.to) // after normalization: to = summit
-            .collect();
+        let lift_base_ids = &lift_base_ids_snap;
+        let lift_exit_ids = &lift_exit_ids_snap;
 
         // Map each node to the piste names that use it (from/to of piste segments).
         let mut node_piste_names: HashMap<usize, Vec<String>> = HashMap::new();
@@ -564,16 +593,8 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
     // Excluded sources: lift-exit and lift-base nodes to prevent lift-to-lift
     // and base-to-base shortcuts.
     {
-        let lift_base_ids: HashSet<usize> = segments
-            .iter()
-            .filter(|s| s.kind == "lift")
-            .map(|s| s.from) // after normalization: from = base
-            .collect();
-        let lift_exit_ids: HashSet<usize> = segments
-            .iter()
-            .filter(|s| s.kind == "lift")
-            .map(|s| s.to) // after normalization: to = summit
-            .collect();
+        let lift_base_ids = &lift_base_ids_snap;
+        let lift_exit_ids = &lift_exit_ids_snap;
 
         // Map each node to the piste names that use it (from/to of piste segments).
         let mut node_piste_names: HashMap<usize, Vec<String>> = HashMap::new();
@@ -666,6 +687,15 @@ pub fn build_graph(data: &OsmData) -> (Vec<Node>, Vec<Segment>, Vec<RouteElement
     }
     let route_elements: Vec<RouteElement> = seen.into_values().collect();
 
+    // Invariant required by Dijkstra: node IDs must equal their Vec index so
+    // that dist[node_id] and prev[node_id] are valid direct-index accesses.
+    // This holds by construction (IDs are assigned as `nodes.len()` before
+    // push), but an explicit check catches any future regression immediately.
+    debug_assert!(
+        nodes.iter().enumerate().all(|(i, n)| n.id == i),
+        "node IDs are not contiguous: Dijkstra dist[] indexing would be wrong"
+    );
+
     (nodes, segments, route_elements)
 }
 
@@ -697,4 +727,134 @@ pub fn arrival_zone(goal_node: usize, segments: &[Segment]) -> HashSet<usize> {
         }
     }
     zone
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Helper: build a minimal Segment for testing.
+    fn seg(id: usize, from: usize, to: usize, kind: &str) -> Segment {
+        Segment {
+            id,
+            from,
+            to,
+            name: format!("seg_{id}"),
+            kind: kind.to_string(),
+            difficulty: "-".to_string(),
+            coords: vec![[44.9, 6.5, 1800.0], [44.91, 6.5, 1700.0]],
+            occupancy: None,
+            duration_min: None,
+        }
+    }
+
+    #[test]
+    fn adjacency_from_segments_maps_from_node_to_segment_ids() {
+        // Two segments departing from node 0 and one from node 1.
+        // adj[0] must contain both segment IDs; adj[1] the third; adj[2] absent.
+        let segments = vec![
+            seg(0, 0, 1, "piste"),
+            seg(1, 0, 2, "piste"),
+            seg(2, 1, 2, "piste"),
+        ];
+        let adj = adjacency_from_segments(&segments);
+
+        let mut ids_from_0 = adj[&0].clone();
+        ids_from_0.sort_unstable();
+        assert_eq!(ids_from_0, vec![0, 1], "node 0 must have segments 0 and 1");
+        assert_eq!(adj[&1], vec![2], "node 1 must have segment 2");
+        assert!(!adj.contains_key(&2), "node 2 has no outgoing edges");
+    }
+
+    #[test]
+    fn adjacency_node_with_no_outgoing_edges_absent() {
+        // Segment 0->1: only node 0 has an outgoing edge.
+        let segments = vec![seg(0, 0, 1, "piste")];
+        let adj = adjacency_from_segments(&segments);
+        assert!(adj.contains_key(&0), "node 0 must be in adj");
+        assert!(!adj.contains_key(&1), "node 1 (sink) must not be in adj");
+    }
+
+    #[test]
+    fn arrival_zone_contains_goal_and_ski_in_sources() {
+        // Ski-in segments 2->5 and 3->5 feed goal node 5.
+        // Zone must include 5, 2, and 3.
+        let segments = vec![
+            seg(0, 2, 5, "ski-in"),
+            seg(1, 3, 5, "ski-in"),
+            seg(2, 4, 5, "piste"), // piste does not contribute to zone
+        ];
+        let zone = arrival_zone(5, &segments);
+        assert!(zone.contains(&5), "goal node must be in zone");
+        assert!(zone.contains(&2), "ski-in source 2 must be in zone");
+        assert!(zone.contains(&3), "ski-in source 3 must be in zone");
+        assert!(!zone.contains(&4), "piste source must not be in zone");
+    }
+
+    #[test]
+    fn arrival_zone_excludes_traverse_sources() {
+        // A traverse edge pointing at the goal must not widen the zone.
+        let segments = vec![
+            seg(0, 7, 5, "traverse"),
+        ];
+        let zone = arrival_zone(5, &segments);
+        assert!(zone.contains(&5), "goal must still be in zone");
+        assert!(!zone.contains(&7), "traverse source must not be in zone");
+    }
+
+    #[test]
+    fn arrival_zone_empty_segments_contains_only_goal() {
+        // No segments -> zone has exactly one member.
+        let zone = arrival_zone(3, &[]);
+        assert_eq!(zone.len(), 1, "zone must have exactly one member");
+        assert!(zone.contains(&3));
+    }
+
+    #[test]
+    fn entry_exit_piste_start_is_higher_end() {
+        // Piste polyline: head at 1800 m, tail at 1600 m.
+        // Nodes 0 and 1 placed at the head/tail coords.
+        // entry_exit must return (head_node, tail_node) = (0, 1).
+        let pl = Polyline {
+            group_key: "Test Piste".to_string(),
+            kind: "piste".to_string(),
+            difficulty: "easy".to_string(),
+            coords: vec![[44.90, 6.50, 1800.0], [44.91, 6.50, 1600.0]],
+            occupancy: None,
+            duration_min: None,
+        };
+        let nodes = vec![
+            Node { id: 0, coord: [44.90, 6.50, 1800.0] },
+            Node { id: 1, coord: [44.91, 6.50, 1600.0] },
+        ];
+        let (start, end) = entry_exit(&pl, &nodes).expect("entry_exit must return Some");
+        assert_eq!(start, 0, "piste start must be the higher node (node 0)");
+        assert_eq!(end, 1, "piste end must be the lower node (node 1)");
+    }
+
+    #[test]
+    fn entry_exit_lift_start_is_lower_end() {
+        // Lift polyline: head at 1600 m (base), tail at 1800 m (summit).
+        // Nodes: node 0 at head coords, node 1 at tail coords.
+        // entry_exit must return (head_node, tail_node) = (0, 1).
+        let pl = Polyline {
+            group_key: "Test Lift [chair_lift]".to_string(),
+            kind: "lift".to_string(),
+            difficulty: "chair_lift".to_string(),
+            coords: vec![[44.90, 6.50, 1600.0], [44.91, 6.50, 1800.0]],
+            occupancy: None,
+            duration_min: None,
+        };
+        let nodes = vec![
+            Node { id: 0, coord: [44.90, 6.50, 1600.0] },
+            Node { id: 1, coord: [44.91, 6.50, 1800.0] },
+        ];
+        let (start, end) = entry_exit(&pl, &nodes).expect("entry_exit must return Some");
+        assert_eq!(start, 0, "lift start must be the lower (base) node");
+        assert_eq!(end, 1, "lift end must be the higher (summit) node");
+    }
 }

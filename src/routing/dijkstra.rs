@@ -28,6 +28,18 @@ pub fn dijkstra(
     excluded_difficulties: &[&str],
     excluded_lift_types: &[&str],
 ) -> Option<Vec<usize>> {
+    // dist[] and prev[] are indexed by node ID.  This is safe only when IDs
+    // are dense (0..n_nodes).  build_graph guarantees this invariant; the
+    // assert here catches any caller that passes a stale or mis-counted value.
+    debug_assert!(
+        start < n_nodes,
+        "start node {start} is out of range for n_nodes={n_nodes}"
+    );
+    debug_assert!(
+        goal_zone.iter().all(|&g| g < n_nodes),
+        "goal_zone contains a node ID >= n_nodes={n_nodes}"
+    );
+
     let mut dist = vec![u32::MAX; n_nodes];
     let mut prev: Vec<Option<usize>> = vec![None; n_nodes]; // segment ID that reached each node
     let mut actual_goal: Option<usize> = None;
@@ -205,5 +217,116 @@ mod tests {
         assert!(result.is_some(), "alternate path must be found");
         let path = result.unwrap();
         assert!(!path.contains(&0), "blocked segment must not appear in path");
+    }
+
+    // Helper: segment with custom coords (for segment_length edge-case tests).
+    fn make_segment_coords(id: usize, from: usize, to: usize, coords: Vec<[f64; 3]>) -> Segment {
+        Segment {
+            id,
+            from,
+            to,
+            name: format!("seg_{id}"),
+            kind: "piste".to_string(),
+            difficulty: "easy".to_string(),
+            coords,
+            occupancy: None,
+            duration_min: None,
+        }
+    }
+
+    #[test]
+    fn segment_length_no_coords_is_zero() {
+        // A segment with an empty coord list must produce 0.0 (no windows to sum).
+        let seg = make_segment_coords(0, 0, 1, vec![]);
+        let len = segment_length(&seg);
+        assert!(
+            len.abs() < f64::EPSILON,
+            "empty coords must give length 0.0, got {len}"
+        );
+    }
+
+    #[test]
+    fn segment_length_single_coord_is_zero() {
+        // A single-point segment has no sub-segment to measure.
+        let seg = make_segment_coords(0, 0, 1, vec![[44.9, 6.5, 1800.0]]);
+        let len = segment_length(&seg);
+        assert!(
+            len.abs() < f64::EPSILON,
+            "single coord must give length 0.0, got {len}"
+        );
+    }
+
+    #[test]
+    fn segment_length_two_known_coords_approx_100m() {
+        // Two coords ~100 m apart (0.0009 deg lat diff at 44.9 N).
+        // make_segment uses these coords; the result should be between 90-110 m.
+        let seg = make_segment(0, 0, 1, "piste", "easy");
+        let len = segment_length(&seg);
+        assert!(
+            (90.0..=110.0).contains(&len),
+            "two coords ~100 m apart must give ~100 m length, got {len}"
+        );
+    }
+
+    #[test]
+    fn lift_weight_beats_longer_piste() {
+        // Graph: 0 -> 2 via lift (weight = 50 fixed).
+        //        0 -> 1 -> 2 via two piste segments (~100 m each, total 200).
+        // Dijkstra should prefer the lift (cheaper weight).
+        let seg_lift = make_segment(0, 0, 2, "lift", "chair_lift");  // weight 50
+        let seg_p1 = make_segment(1, 0, 1, "piste", "easy");         // weight ~100
+        let seg_p2 = make_segment(2, 1, 2, "piste", "easy");         // weight ~100
+        let segments = vec![seg_lift, seg_p1, seg_p2];
+        let adj = make_adj(&segments);
+        let mut goal = HashSet::new();
+        goal.insert(2);
+
+        let result = dijkstra(0, &goal, 3, &segments, &adj, &[], &[]);
+        assert_eq!(
+            result,
+            Some(vec![0]),
+            "lift (weight 50) must beat two piste segments (weight ~200)"
+        );
+    }
+
+    #[test]
+    fn traverse_penalty_forces_piste_route() {
+        // Graph: 0 -> 1 via traverse (weight = 10x ~100m = ~1000).
+        //        0 -> 1 via piste   (weight ~100).
+        // Dijkstra must take the piste, not the expensive traverse.
+        let seg_traverse = make_segment(0, 0, 1, "traverse", "-");  // weight ~1000
+        let seg_piste = make_segment(1, 0, 1, "piste", "easy");     // weight ~100
+        let segments = vec![seg_traverse, seg_piste];
+        let adj = make_adj(&segments);
+        let mut goal = HashSet::new();
+        goal.insert(1);
+
+        let result = dijkstra(0, &goal, 2, &segments, &adj, &[], &[]);
+        assert_eq!(
+            result,
+            Some(vec![1]),
+            "piste (weight ~100) must beat traverse (weight ~1000)"
+        );
+    }
+
+    #[test]
+    fn multi_hop_path_reconstructed_correctly() {
+        // Chain: 0 -> 1 -> 2 -> 3, three piste segments.
+        // Path reconstruction must return all three segment IDs in order.
+        let segments = vec![
+            make_segment(0, 0, 1, "piste", "easy"),
+            make_segment(1, 1, 2, "piste", "easy"),
+            make_segment(2, 2, 3, "piste", "easy"),
+        ];
+        let adj = make_adj(&segments);
+        let mut goal = HashSet::new();
+        goal.insert(3);
+
+        let result = dijkstra(0, &goal, 4, &segments, &adj, &[], &[]);
+        assert_eq!(
+            result,
+            Some(vec![0, 1, 2]),
+            "three-hop path must return segments [0, 1, 2] in order"
+        );
     }
 }

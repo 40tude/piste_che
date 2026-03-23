@@ -17,7 +17,7 @@ use leptos::prelude::provide_context;
 use leptos_axum::{LeptosRoutes, generate_route_list};
 use piste_che::{
     app::App,
-    routing::{OsmData, adjacency_from_segments, build_graph},
+    routing::{OsmData, adjacency_from_segments, build_graph, data::find_latest_json},
     server::{AppState, api::build_area_response},
 };
 use std::net::{IpAddr, Ipv4Addr}; // BCR
@@ -64,12 +64,13 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     let port = resolve_port(&cli);
 
-    // Load the bundled ski area data file.
+    // Auto-select the most recent timestamped JSON file in data/.
     // Path is relative to the working directory (project root when running
     // with `cargo leptos watch` or from the release binary).
-    let data_path = std::path::Path::new("data/serre_chevalier_20260319_221219.json");
+    let data_path =
+        find_latest_json(std::path::Path::new("data")).context("Selecting latest data file")?;
     let osm =
-        OsmData::load(data_path).with_context(|| format!("Loading {}", data_path.display()))?;
+        OsmData::load(&data_path).with_context(|| format!("Loading {}", data_path.display()))?;
 
     let (nodes, segments, route_elements) = build_graph(&osm);
     let adjacency = adjacency_from_segments(&segments);

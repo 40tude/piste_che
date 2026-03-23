@@ -1,4 +1,4 @@
-// Rust guideline compliant 2026-03-19
+// Rust guideline compliant 2026-02-16
 //
 // Popup overlay shown when the user clicks a piste or lift on the map.
 // Displays name, type, difficulty/lift subtype, seat count, duration,
@@ -122,15 +122,18 @@ pub fn nearest_segment(lat: f64, lon: f64, segments: &[AreaSegment]) -> Option<P
     let c1 = &seg.coords[best_coord_idx + 1];
     let alt_m = c0[2] + best_t * (c1[2] - c0[2]);
 
-    // Total segment length (sum of consecutive haversine distances).
+    // Total piste/lift length: sum all sub-segments sharing the same name and kind.
+    // A named piste can be split into multiple AreaSegments at junctions; summing
+    // only the clicked sub-segment would underreport the full trail length.
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         reason = "length in metres, always positive and < 50 km"
     )]
-    let length_m = seg
-        .coords
-        .windows(2)
+    let length_m = segments
+        .iter()
+        .filter(|s| s.name == seg.name && s.kind == seg.kind)
+        .flat_map(|s| s.coords.windows(2))
         .map(|w| haversine(w[0][0], w[0][1], w[1][0], w[1][1]))
         .sum::<f64>()
         .round() as u32;

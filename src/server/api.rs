@@ -1,4 +1,4 @@
-// Rust guideline compliant 2026-03-19
+// Rust guideline compliant 2026-02-16
 //
 // Server functions -- auto-registered by Leptos under the `/api/` prefix.
 // This module compiles for both `ssr` and `hydrate`; the `#[server]` macro
@@ -219,10 +219,22 @@ pub async fn compute_route(
             });
             total_distance_m = total_distance_m.saturating_add(dist);
             last_name = seg.name.as_str();
-        } else if let Some(last_hs) = highlight_segments.last_mut() {
-            // Same-named piste split into subsegments at junctions: extend
-            // the existing highlight rather than discarding subsegment coords.
-            last_hs.coords.extend(seg.coords.iter().map(|c| [c[0], c[1]]));
+        } else {
+            // Same-named piste split into sub-segments at junctions: accumulate
+            // distance and extend the highlight rather than discarding sub-segment data.
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "distance in metres, always positive and < 50 km"
+            )]
+            let dist = segment_length(seg).round() as u32;
+            if let Some(last_step) = steps.last_mut() {
+                last_step.distance_m = last_step.distance_m.saturating_add(dist);
+            }
+            total_distance_m = total_distance_m.saturating_add(dist);
+            if let Some(last_hs) = highlight_segments.last_mut() {
+                last_hs.coords.extend(seg.coords.iter().map(|c| [c[0], c[1]]));
+            }
         }
     }
 

@@ -121,7 +121,7 @@ Heroku does NOT run `cargo leptos build`. The `site/` folder must be created, co
 # Fill the `site/` folder
 cargo leptos build --release
 
-# Commit
+# Commit using VSCode UI or the 2 lines below
 git add site/
 git commit -m "deploy: rebuild assets"
 

@@ -159,7 +159,7 @@ pub async fn compute_route(
     let excl_diff: Vec<&str> = excluded_difficulties.iter().map(String::as_str).collect();
     let excl_lift: Vec<&str> = excluded_lift_types.iter().map(String::as_str).collect();
 
-    let goal_zone = arrival_zone(end_el.start_node, &state.segments);
+    let goal_zone = arrival_zone(end_el.start_node);
 
     let mid_path = dijkstra(
         start_el.end_node,
@@ -244,9 +244,16 @@ pub async fn compute_route(
         }
     }
 
-    // End element is always the last step (unless already appended).
-    // Arrivals are lift departure stations -- the user does not take that lift,
-    // so do not highlight it on the map.
+    // End element is always shown as the last step (unless already appended)
+    // so the user knows where the itinerary terminates.
+    //
+    // The arrival is the *departure station* of a lift, not a segment the user
+    // actually rides.  Its distance is therefore intentionally excluded from
+    // `total_distance_m`.  Adding it would over-count: for a circular route
+    // (START == END, e.g. "Ecole de Frejus") the same lift would be counted
+    // twice -- once at the start (ridden up) and once at the end (just arrived
+    // at the base, not ridden again).
+    //
     // Compare (name, kind) not name alone: two elements can share a display
     // name while having different kinds (e.g., "Eychauda" piste vs lift).
     let last_matches_end = steps.last().is_some_and(|s| {
@@ -260,7 +267,8 @@ pub async fn compute_route(
             difficulty: end_el.difficulty.clone(),
             distance_m: end_dist,
         });
-        total_distance_m = total_distance_m.saturating_add(end_dist);
+        // NOTE: end_dist is deliberately NOT added to total_distance_m.
+        // See the block comment above.
     }
 
     tracing::event!(

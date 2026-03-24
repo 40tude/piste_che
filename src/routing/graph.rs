@@ -1,4 +1,4 @@
-// Rust guideline compliant 2026-03-23
+// Rust guideline compliant 2026-03-24
 use super::chains::build_chains;
 use super::data::{OsmData, haversine};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -56,12 +56,10 @@ const SKI_OUT_RADIUS: f64 = 100.0;
 /// small negative value (target slightly above exit).
 const SKI_OUT_MAX_ALT: f64 = 10.0;
 
-/// Horizontal radius (metres) for ski-in edges (Step 6c) and the arrival zone.
+/// Horizontal radius (metres) for ski-in edges (Step 6c).
 ///
-/// - Step 6c: piste nodes within this radius of a lift base receive a directed
-///   ski-in edge toward that base, bridging approach gaps > `TRAVERSE_RADIUS`.
-/// - `arrival_zone`: any node within this radius of the destination counts as arrived.
-///
+/// Piste nodes within this radius of a lift base receive a directed ski-in
+/// edge toward that base, bridging approach gaps > `TRAVERSE_RADIUS`.
 /// Kept tight (100 m) so that ski-in edges only bridge the final approach
 /// to the boarding station, not arbitrary cross-mountain shortcuts.
 /// Piste nodes further away reach the lift base via regular piste segments.
@@ -710,23 +708,16 @@ pub fn adjacency_from_segments(segments: &[Segment]) -> HashMap<usize, Vec<usize
 
 /// Return the arrival zone for `goal_node` (a lift base).
 ///
-/// Contains `goal_node` itself plus every node that has a direct `ski-in` edge
-/// into `goal_node`.  Dijkstra stops as soon as any zone node is settled.
+/// Returns a singleton set containing only `goal_node`.  Dijkstra stops as
+/// soon as that node is settled, ensuring the full piste path down to the
+/// lift base is explored and highlighted.
 ///
-/// Traverse edges are intentionally excluded: because they carry a 10x distance
-/// penalty, Dijkstra always prefers continuing down the piste to the ski-in
-/// source node rather than branching off via a costly traverse.  Including
-/// traverse sources would let Dijkstra stop on an upper piste node that happens
-/// to be within traverse range, leaving the bottom of the piste unhighlighted.
-pub fn arrival_zone(goal_node: usize, segments: &[Segment]) -> HashSet<usize> {
-    let mut zone = HashSet::new();
-    zone.insert(goal_node);
-    for seg in segments {
-        if seg.to == goal_node && seg.kind == "ski-in" {
-            zone.insert(seg.from);
-        }
-    }
-    zone
+/// Previously this also included ski-in source nodes so Dijkstra could stop
+/// "close enough" to the base.  That caused early termination: the last piste
+/// segment(s) between the ski-in source and the base were never explored, so
+/// they appeared green on the map but unselected in the itinerary.
+pub fn arrival_zone(goal_node: usize) -> HashSet<usize> {
+    HashSet::from([goal_node])
 }
 
 // ---------------------------------------------------------------------------
@@ -780,38 +771,19 @@ mod tests {
     }
 
     #[test]
-    fn arrival_zone_contains_goal_and_ski_in_sources() {
-        // Ski-in segments 2->5 and 3->5 feed goal node 5.
-        // Zone must include 5, 2, and 3.
-        let segments = vec![
-            seg(0, 2, 5, "ski-in"),
-            seg(1, 3, 5, "ski-in"),
-            seg(2, 4, 5, "piste"), // piste does not contribute to zone
-        ];
-        let zone = arrival_zone(5, &segments);
-        assert!(zone.contains(&5), "goal node must be in zone");
-        assert!(zone.contains(&2), "ski-in source 2 must be in zone");
-        assert!(zone.contains(&3), "ski-in source 3 must be in zone");
-        assert!(!zone.contains(&4), "piste source must not be in zone");
-    }
-
-    #[test]
-    fn arrival_zone_excludes_traverse_sources() {
-        // A traverse edge pointing at the goal must not widen the zone.
-        let segments = vec![
-            seg(0, 7, 5, "traverse"),
-        ];
-        let zone = arrival_zone(5, &segments);
-        assert!(zone.contains(&5), "goal must still be in zone");
-        assert!(!zone.contains(&7), "traverse source must not be in zone");
-    }
-
-    #[test]
-    fn arrival_zone_empty_segments_contains_only_goal() {
-        // No segments -> zone has exactly one member.
-        let zone = arrival_zone(3, &[]);
+    fn arrival_zone_contains_only_goal_node() {
+        // Zone must be a singleton: only goal_node, regardless of nearby edges.
+        let zone = arrival_zone(5);
         assert_eq!(zone.len(), 1, "zone must have exactly one member");
-        assert!(zone.contains(&3));
+        assert!(zone.contains(&5), "goal node must be in zone");
+    }
+
+    #[test]
+    fn arrival_zone_different_goal_ids() {
+        // Verify the correct node ID is returned for an arbitrary goal.
+        let zone = arrival_zone(42);
+        assert!(zone.contains(&42));
+        assert!(!zone.contains(&0));
     }
 
     #[test]

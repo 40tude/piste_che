@@ -9,9 +9,15 @@ edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-# [[bin]]
-# name = "piste_che_server"
-# path = "src/main.rs"
+[[bin]]
+name = "piste_che_server"
+path = "src/main.rs"
+required-features = ["ssr"]
+
+[[bin]]
+name = "debug_graph"
+path = "src/bin/debug_graph.rs"
+required-features = ["ssr"]
 
 [dependencies]
 # Shared: server + WASM client
@@ -70,6 +76,7 @@ ssr = [
 ]
 
 [package.metadata.leptos]
+bin-target = "piste_che_server"
 site-root = "site"
 output-name = "piste_che"
 site-pkg-dir = "pkg"

@@ -7,7 +7,7 @@
 .specify/
 assets/
 docs/
-resort_generator/
+# resort_generator/
 specs/
 tests/
 .gitignore

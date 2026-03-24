@@ -113,6 +113,26 @@ cargo test
 ```
 
 
+## Debug Graph
+
+`src/bin/debug_graph.rs` -- standalone CLI that reuses the routing pipeline to generate a self-contained Leaflet.js HTML map for visual debugging of the graph (nodes, segments, crossings, traverses, etc.).
+
+```powershell
+cargo run --bin debug_graph
+# Output: temp/debug_graph.html  (open in any browser)
+```
+
+Edit the constants at the top of the file to tune the output:
+
+| Constant | Purpose |
+|---|---|
+| `START_NODE` / `END_NODE` | `Option<usize>` -- set both to overlay a Dijkstra route (magenta) |
+| `SHOW_TRAVERSES` / `SHOW_SKI_IN` / `SHOW_SKI_OUT` | Toggle synthetic edge layers |
+| `RADIUS_DISPLAY` | `Option<f64>` -- draw circles at lift nodes (e.g. `Some(50.0)`) |
+
+The HTML map includes layer toggles, popups with node/segment details, and pistes colored by difficulty.
+
+
 ## Deploy Heroku
 
 Heroku does NOT run `cargo leptos build`. The `site/` folder must be created, committed and pushed.
